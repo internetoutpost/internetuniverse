@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Procedural Universe Explorer</title>
+  <style>
+    :root {
+      --panel: rgba(9, 14, 30, 0.78);
+      --panel-border: rgba(160, 190, 255, 0.22);
+      --text: #eef4ff;
+      --muted: #94a9d6;
+      --accent: #86f7ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #101a3a 0%, #050713 60%, #02030a 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+    }
+
+    canvas.dragging { cursor: grabbing; }
+
+    .hud, .details {
+      position: fixed;
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    .hud {
+      top: 18px;
+      left: 18px;
+      width: min(390px, calc(100vw - 36px));
+      padding: 18px;
+      pointer-events: none;
+    }
+
+    .details {
+      left: 18px;
+      bottom: 18px;
+      width: min(390px, calc(100vw - 36px));
+      padding: 14px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+
+    .hud h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      letter-spacing: 0.02em;
+    }
+
+    .hud p, .details p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .hud strong, .details strong { color: var(--accent); }
+
+    .crumbs {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .crumb {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(134, 247, 255, 0.1);
+      color: #cbeeff;
+    }
+
+    .controls {
+      position: fixed;
+      right: 18px;
+      top: 18px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .nav {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      min-width: 44px;
+      height: 44px;
+      padding: 0 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .nav button { font-size: 14px; }
+    button:hover { border-color: rgba(134, 247, 255, 0.65); }
+    button:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    .tooltip {
+      position: fixed;
+      z-index: 5;
+      max-width: 280px;
+      padding: 12px 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(5, 9, 22, 0.9);
+      color: var(--text);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+      transform: translate(14px, 14px);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms ease;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .tooltip.visible { opacity: 1; }
+    .tooltip b { color: var(--accent); }
+
+
+    .search-panel {
+      position: fixed;
+      right: 18px;
+      top: 78px;
+      width: min(430px, calc(100vw - 36px));
+      max-height: calc(100vh - 170px);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 4;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-row input {
+      flex: 1;
+      min-width: 0;
+      height: 42px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(2, 5, 14, 0.58);
+      color: var(--text);
+      padding: 0 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    .search-row input:focus {
+      border-color: rgba(134, 247, 255, 0.7);
+      box-shadow: 0 0 0 3px rgba(134, 247, 255, 0.08);
+    }
+
+    .search-row button {
+      min-width: 86px;
+      height: 42px;
+      font-size: 14px;
+      box-shadow: none;
+    }
+
+    .search-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .search-results {
+      overflow: auto;
+      max-height: calc(100vh - 285px);
+      padding-right: 2px;
+    }
+
+    .result-button {
+      width: 100%;
+      height: auto;
+      min-height: 54px;
+      margin: 0 0 8px;
+      padding: 10px 12px;
+      text-align: left;
+      border-radius: 14px;
+      font-size: 13px;
+      box-shadow: none;
+      display: block;
+    }
+
+    .result-button b {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
+
+    .result-button span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    mark {
+      color: #ffffff;
+      background: rgba(134, 247, 255, 0.22);
+      border-radius: 4px;
+      padding: 0 2px;
+    }
+
+    @media (max-width: 780px) {
+      .search-panel {
+        left: 18px;
+        right: 18px;
+        top: auto;
+        bottom: 78px;
+        width: auto;
+        max-height: 36vh;
+      }
+
+      .search-results { max-height: 20vh; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="universe"></canvas>
+
+  <section class="hud">
+    <h1 id="title">Observable Cluster</h1>
+    <p id="instructions"><strong>Drag</strong> to navigate. <strong>Wheel</strong> to zoom. <strong>Click</strong> a galaxy to enter it.</p>
+    <div class="crumbs" id="crumbs"></div>
+  </section>
+
+  <section class="details" id="details">
+    <p><strong>Universe generated:</strong> 1,000 galaxies · 100 solar systems per galaxy · 10 planets per system.</p>
+  </section>
+
+  <div class="controls">
+    <button id="zoomIn" aria-label="Zoom in">+</button>
+    <button id="zoomOut" aria-label="Zoom out">−</button>
+    <button id="reset" aria-label="Reset view">⌂</button>
+  </div>
+
+  <div class="nav">
+    <button id="back" disabled>← Back</button>
+  </div>
+
+  <div id="tooltip" class="tooltip"></div>
+
+
+  <section class="search-panel" aria-label="Search generated universe">
+    <div class="search-row">
+      <input id="searchInput" type="search" placeholder="Search galaxies, systems, planets…" autocomplete="off" />
+      <button id="searchButton">Search</button>
+    </div>
+    <div id="searchMeta" class="search-meta">Search names, types, or address codes like G0A or S02.</div>
+    <div id="searchResults" class="search-results" aria-live="polite"></div>
+  </section>
+
+  <script>
+    const canvas = document.getElementById('universe');
+    const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('tooltip');
+    const title = document.getElementById('title');
+    const instructions = document.getElementById('instructions');
+    const crumbs = document.getElementById('crumbs');
+    const details = document.getElementById('details');
+    const backButton = document.getElementById('back');
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    const searchMeta = document.getElementById('searchMeta');
+    const searchResults = document.getElementById('searchResults');
+
+    const state = {
+      width: 0,
+      height: 0,
+      scale: 0.12,
+      minScale: 0.03,
+      maxScale: 3,
+      offsetX: 0,
+      offsetY: 0,
+      dragging: false,
+      clickMoved: false,
+      lastX: 0,
+      lastY: 0,
+      hover: null,
+      view: 'galaxies',
+      galaxy: null,
+      system: null,
+      time: 0
+    };
+
+    const galaxyNames = ['Aurelia', 'Vesper', 'Orion', 'Nyx', 'Helion', 'Caldera', 'Viridian', 'Sable', 'Eos', 'Tir', 'Umbra', 'Lyra', 'Cobalt', 'Morrow', 'Kepler', 'Iris'];
+    const systemNames = ['Prime', 'Crown', 'Forge', 'Haven', 'Reach', 'Drift', 'Gate', 'Spire', 'Basin', 'Rift', 'Arc', 'Maw'];
+    const planetNames = ['Aster', 'Bront', 'Cyra', 'Dione', 'Eld', 'Faron', 'Glim', 'Hedra', 'Ione', 'Juno', 'Kora', 'Lumin', 'Myra', 'Nacre', 'Oryn', 'Pyra', 'Quill', 'Rhea', 'Solis', 'Thale'];
+    const planetTypes = ['Terran', 'Oceanic', 'Desert', 'Ice', 'Gas Giant', 'Volcanic', 'Jungle', 'Barren', 'Storm', 'Crystal'];
+    const palette = ['#ffe08a', '#8cf7ff', '#ff7ad9', '#b58cff', '#7db7ff', '#ffb86c', '#d7ff8c', '#ff8c8c'];
+
+    function rand(seed) {
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+
+    function pick(list, seed) {
+      return list[Math.floor(rand(seed) * list.length)];
+    }
+
+    function uniqueCode(...parts) {
+      // Encodes the object's procedural address into the name. This guarantees
+      // uniqueness without needing to keep a global name registry in memory.
+      return parts.map(part => Number(part).toString(36).toUpperCase().padStart(2, '0')).join('');
+    }
+
+    function makeGalaxyName(i) {
+      const root = pick(galaxyNames, i * 97 + 13);
+      return `${root} Galaxy G-${uniqueCode(i)}`;
+    }
+
+    function makeSystemName(galaxy, i) {
+      const root = pick(galaxyNames, galaxy.id * 193 + i * 17);
+      const suffix = pick(systemNames, galaxy.id * 251 + i * 31);
+      return `${root} ${suffix} System G${uniqueCode(galaxy.id)}-S${uniqueCode(i)}`;
+    }
+
+    function makePlanetName(system, i) {
+      const root = pick(planetNames, system.galaxyId * 997 + system.id * 53 + i * 11);
+      return `${root} World G${uniqueCode(system.galaxyId)}-S${uniqueCode(system.id)}-P${uniqueCode(i)}`;
+    }
+
+    function makeGalaxy(i) {
+      const arm = i % 5;
+      const r = 900 + Math.sqrt(i) * 420 + rand(i * 19) * 580;
+      const a = i * 2.39996 + arm * 0.42;
+      return {
+        id: i,
+        name: makeGalaxyName(i),
+        type: rand(i * 3) > 0.84 ? 'Dwarf Galaxy' : rand(i * 5) > 0.72 ? 'Elliptical Galaxy' : 'Spiral Galaxy',
+        x: Math.cos(a) * r + (rand(i * 31) - 0.5) * 520,
+        y: Math.sin(a) * r + (rand(i * 37) - 0.5) * 520,
+        size: 18 + rand(i * 41) * 34,
+        color: palette[i % palette.length],
+        rotation: rand(i * 43) * Math.PI,
+        systems: 100
+      };
+    }
+
+    function makeSystem(galaxy, i) {
+      const r = 120 + Math.sqrt(i) * 90 + rand(galaxy.id * 101 + i) * 160;
+      const a = i * 2.39996 + rand(galaxy.id * 17) * Math.PI;
+      return {
+        id: i,
+        galaxyId: galaxy.id,
+        name: makeSystemName(galaxy, i),
+        type: rand(galaxy.id * 300 + i) > 0.78 ? 'Binary Star System' : 'Solar System',
+        x: Math.cos(a) * r + (rand(i * 13 + galaxy.id) - 0.5) * 140,
+        y: Math.sin(a) * r + (rand(i * 23 + galaxy.id) - 0.5) * 140,
+        size: 10 + rand(galaxy.id * 53 + i) * 13,
+        color: palette[(galaxy.id + i) % palette.length],
+        planets: 10
+      };
+    }
+
+    function makePlanet(system, i) {
+      const radius = 90 + i * 58 + rand(system.galaxyId * 9000 + system.id * 50 + i) * 20;
+      const angle = rand(system.galaxyId * 5000 + system.id * 97 + i) * Math.PI * 2;
+      const speed = (0.00008 + rand(system.galaxyId * 7000 + system.id * 121 + i) * 0.00018) / Math.sqrt(i + 1);
+      return {
+        id: i,
+        systemId: system.id,
+        name: makePlanetName(system, i),
+        type: pick(planetTypes, system.galaxyId * 10000 + system.id * 100 + i),
+        orbit: radius,
+        angle,
+        speed,
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+        size: 7 + rand(system.id * 101 + i) * 12,
+        color: palette[(system.id + i * 2) % palette.length],
+        moons: Math.floor(rand(system.galaxyId * 99 + system.id * 17 + i) * 5)
+      };
+    }
+
+    function getPlanetPosition(planet) {
+      const a = planet.angle + state.time * planet.speed;
+      return {
+        x: Math.cos(a) * planet.orbit,
+        y: Math.sin(a) * planet.orbit
+      };
+    }
+
+    const galaxies = Array.from({ length: 1000 }, (_, i) => makeGalaxy(i));
+    let visibleObjects = galaxies;
+
+    // Infinite deterministic starfield settings.
+    // Stars are generated per world-space chunk only when that chunk is near the camera.
+    const STAR_CHUNK_SIZE = 900;
+    const STAR_CHUNK_DENSITY = 7;
+    const starChunkCache = new Map();
+
+    function hash2D(x, y) {
+      let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263);
+      h = (h ^ (h >>> 13)) >>> 0;
+      h = Math.imul(h, 1274126177) >>> 0;
+      return h ^ (h >>> 16);
+    }
+
+    function generateStarChunk(cx, cy) {
+      const key = `${cx},${cy}`;
+      if (starChunkCache.has(key)) return starChunkCache.get(key);
+
+      const seed = hash2D(cx, cy);
+      const stars = [];
+      const count = STAR_CHUNK_DENSITY + Math.floor(rand(seed) * 6);
+
+      for (let i = 0; i < count; i++) {
+        const s = seed + i * 9973;
+        stars.push({
+          x: cx * STAR_CHUNK_SIZE + rand(s + 1) * STAR_CHUNK_SIZE,
+          y: cy * STAR_CHUNK_SIZE + rand(s + 2) * STAR_CHUNK_SIZE,
+          r: rand(s + 3) * 0.95 + 0.16,
+          alpha: rand(s + 4) * 0.58 + 0.13,
+          twinkle: rand(s + 5) * Math.PI * 2,
+          color: rand(s + 6) > 0.92 ? palette[Math.floor(rand(s + 7) * palette.length)] : '#ffffff'
+        });
+      }
+
+      starChunkCache.set(key, stars);
+
+      // Keep memory bounded while allowing lots of exploration.
+      if (starChunkCache.size > 180) {
+        const firstKey = starChunkCache.keys().next().value;
+        starChunkCache.delete(firstKey);
+      }
+
+      return stars;
+    }
+
+    function getVisibleStarChunks() {
+      const topLeft = screenToWorld(-80, -80);
+      const bottomRight = screenToWorld(state.width + 80, state.height + 80);
+      const minCx = Math.floor(topLeft.x / STAR_CHUNK_SIZE);
+      const maxCx = Math.floor(bottomRight.x / STAR_CHUNK_SIZE);
+      const minCy = Math.floor(topLeft.y / STAR_CHUNK_SIZE);
+      const maxCy = Math.floor(bottomRight.y / STAR_CHUNK_SIZE);
+      const chunks = [];
+
+      for (let cy = minCy; cy <= maxCy; cy++) {
+        for (let cx = minCx; cx <= maxCx; cx++) {
+          chunks.push(generateStarChunk(cx, cy));
+        }
+      }
+
+      return chunks;
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      state.width = window.innerWidth;
+      state.height = window.innerHeight;
+      canvas.width = state.width * dpr;
+      canvas.height = state.height * dpr;
+      canvas.style.width = state.width + 'px';
+      canvas.style.height = state.height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      resetView();
+    }
+
+    function worldToScreen(x, y) {
+      return { x: x * state.scale + state.offsetX, y: y * state.scale + state.offsetY };
+    }
+
+    function screenToWorld(x, y) {
+      return { x: (x - state.offsetX) / state.scale, y: (y - state.offsetY) / state.scale };
+    }
+
+    function resetView() {
+      state.offsetX = state.width / 2;
+      state.offsetY = state.height / 2;
+      if (state.view === 'galaxies') {
+        state.scale = 0.12;
+        state.minScale = 0.03;
+        state.maxScale = 1.4;
+      } else if (state.view === 'systems') {
+        state.scale = 0.58;
+        state.minScale = 0.18;
+        state.maxScale = 2.8;
+      } else {
+        state.scale = 0.82;
+        state.minScale = 0.35;
+        state.maxScale = 3.6;
+      }
+    }
+
+    function setView(view, payload) {
+      state.view = view;
+      state.hover = null;
+      tooltip.classList.remove('visible');
+
+      if (view === 'galaxies') {
+        state.galaxy = null;
+        state.system = null;
+        visibleObjects = galaxies;
+      }
+
+      if (view === 'systems') {
+        state.galaxy = payload;
+        state.system = null;
+        visibleObjects = Array.from({ length: 100 }, (_, i) => makeSystem(payload, i));
+      }
+
+      if (view === 'planets') {
+        state.system = payload;
+        visibleObjects = Array.from({ length: 10 }, (_, i) => makePlanet(payload, i));
+      }
+
+      resetView();
+      updateHud();
+    }
+
+    function updateHud() {
+      if (state.view === 'galaxies') {
+        title.textContent = 'Observable Cluster';
+        instructions.innerHTML = '<strong>Click</strong> a galaxy to enter. <strong>Drag</strong> to navigate. <strong>Wheel</strong> to zoom.';
+        crumbs.innerHTML = '<span class="crumb">1,000 galaxies</span><span class="crumb">100,000 systems</span><span class="crumb">1,000,000 planets</span>';
+        details.innerHTML = '<p><strong>Universe level:</strong> Every visible point is a galaxy. Click one to generate its 100 solar systems.</p>';
+        backButton.disabled = true;
+      } else if (state.view === 'systems') {
+        title.textContent = state.galaxy.name;
+        instructions.innerHTML = '<strong>Click</strong> a solar system to enter. Use <strong>Back</strong> to return to galaxies.';
+        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + state.galaxy.name + '</span><span class="crumb">100 systems</span>';
+        details.innerHTML = `<p><strong>${state.galaxy.type}:</strong> This galaxy contains 100 procedural solar systems. Hover for names and click to inspect planets.</p>`;
+        backButton.disabled = false;
+      } else {
+        title.textContent = state.system.name;
+        instructions.innerHTML = '<strong>Hover</strong> planets for details. Use <strong>Back</strong> to return to the galaxy.';
+        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + state.galaxy.name + '</span><span class="crumb">' + state.system.name + '</span><span class="crumb">10 planets</span>';
+        details.innerHTML = `<p><strong>${state.system.type}:</strong> Ten planets orbit this system. Orbital paths are drawn to scale for this local map.</p>`;
+        backButton.disabled = false;
+      }
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createRadialGradient(state.width / 2, state.height / 2, 0, state.width / 2, state.height / 2, Math.max(state.width, state.height));
+      gradient.addColorStop(0, state.view === 'galaxies' ? '#101a3a' : '#11172f');
+      gradient.addColorStop(0.5, '#060915');
+      gradient.addColorStop(1, '#010208');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, state.width, state.height);
+
+      for (const chunk of getVisibleStarChunks()) {
+        for (const s of chunk) {
+          const p = worldToScreen(s.x, s.y);
+          if (p.x < -20 || p.y < -20 || p.x > state.width + 20 || p.y > state.height + 20) continue;
+          const pulse = 0.25 + Math.sin(state.time * 0.002 + s.twinkle) * 0.16;
+          ctx.globalAlpha = Math.max(0.08, s.alpha + pulse);
+          ctx.fillStyle = s.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawGrid() {
+      const grid = state.view === 'galaxies' ? 800 * state.scale : 180 * state.scale;
+      if (grid < 28) return;
+      const startX = state.offsetX % grid;
+      const startY = state.offsetY % grid;
+      ctx.strokeStyle = 'rgba(134, 247, 255, 0.045)';
+      ctx.lineWidth = 1;
+      for (let x = startX; x < state.width; x += grid) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, state.height); ctx.stroke();
+      }
+      for (let y = startY; y < state.height; y += grid) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(state.width, y); ctx.stroke();
+      }
+    }
+
+    function drawGalaxy(o) {
+      const p = worldToScreen(o.x, o.y);
+      const radius = Math.max(4, o.size * state.scale * 0.72);
+      if (p.x < -80 || p.y < -80 || p.x > state.width + 80 || p.y > state.height + 80) return;
+      const isHover = state.hover === o;
+
+      // New galaxy icon: compact luminous core with soft circular halo and subtle dust ring.
+      // This is intentionally not spiral-shaped, keeping the galaxy map cleaner and closer
+      // to the first visual style.
+      const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 5.2);
+      halo.addColorStop(0, o.color + 'ee');
+      halo.addColorStop(0.18, o.color + '88');
+      halo.addColorStop(0.52, o.color + '22');
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius * (isHover ? 5.8 : 4.6), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(o.rotation * 0.25);
+      ctx.globalAlpha = isHover ? 0.85 : 0.45;
+      ctx.strokeStyle = o.color;
+      ctx.lineWidth = Math.max(1, 1.2 * state.scale);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius * 2.15, radius * 0.82, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1.8, radius * 0.34), 0, Math.PI * 2);
+      ctx.fill();
+
+      if (state.scale > 0.16 || isHover) label(o, p, radius);
+    }
+
+    function drawSystem(o) {
+      const p = worldToScreen(o.x, o.y);
+      const radius = o.size * state.scale;
+      const isHover = state.hover === o;
+
+      // Solar systems now use the previous atom/galaxy-like orbital icon.
+      drawGlow(p, radius, o.color, isHover ? 5.8 : 4.3);
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((o.id * 0.37) + state.time * 0.00008);
+      ctx.strokeStyle = o.color;
+      ctx.globalAlpha = isHover ? 0.95 : 0.72;
+      ctx.lineWidth = Math.max(1, 1.8 * state.scale);
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius * (2.2 + i * 0.18), radius * 0.78, i * Math.PI / 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = o.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(4, radius * 0.78), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1.4, radius * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+
+      if (state.scale > 0.36 || isHover) label(o, p, radius);
+    }
+
+    function drawPlanetSystem() {
+      const star = { x: 0, y: 0, color: state.system.color };
+      const center = worldToScreen(0, 0);
+      for (const p of visibleObjects) {
+        ctx.strokeStyle = 'rgba(134, 247, 255, 0.11)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, p.orbit * state.scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      drawGlow(center, 18 * state.scale, star.color, 5.2);
+      ctx.fillStyle = star.color;
+      ctx.beginPath(); ctx.arc(center.x, center.y, Math.max(8, 18 * state.scale), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px Inter, sans-serif';
+      ctx.fillText(state.system.name + ' Star', center.x + 18, center.y + 4);
+    }
+
+    function drawPlanet(o) {
+      const pos = getPlanetPosition(o);
+      const p = worldToScreen(pos.x, pos.y);
+      const radius = o.size * state.scale;
+      const isHover = state.hover === o;
+      drawGlow(p, radius, o.color, isHover ? 4.2 : 2.8);
+      ctx.fillStyle = o.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(4, radius), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+      label(o, p, radius);
+    }
+
+    function drawGlow(p, radius, color, multiplier) {
+      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * multiplier);
+      glow.addColorStop(0, color + 'bb');
+      glow.addColorStop(0.34, color + '44');
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius * multiplier, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function label(o, p, radius) {
+      ctx.font = `${state.hover === o ? 15 : 12}px Inter, sans-serif`;
+      ctx.fillStyle = state.hover === o ? '#ffffff' : 'rgba(232, 240, 255, 0.78)';
+      ctx.fillText(o.name, p.x + radius + 10, p.y + 4);
+    }
+
+    function draw() {
+      state.time = performance.now();
+      drawBackground();
+      drawGrid();
+      if (state.view === 'planets') drawPlanetSystem();
+      for (const o of visibleObjects) {
+        if (state.view === 'galaxies') drawGalaxy(o);
+        else if (state.view === 'systems') drawSystem(o);
+        else drawPlanet(o);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    function hitTest(clientX, clientY) {
+      const w = screenToWorld(clientX, clientY);
+      let nearest = null;
+      let nearestDist = Infinity;
+      for (const o of visibleObjects) {
+        const testPos = state.view === 'planets' ? getPlanetPosition(o) : o;
+        const d = Math.hypot(w.x - testPos.x, w.y - testPos.y);
+        const hitRadius = state.view === 'galaxies' ? o.size * 1.25 + 28 : o.size + 18;
+        if (d < hitRadius && d < nearestDist) {
+          nearest = o;
+          nearestDist = d;
+        }
+      }
+      return nearest;
+    }
+
+    function updateHover(clientX, clientY) {
+      const nearest = hitTest(clientX, clientY);
+      state.hover = nearest;
+      if (!nearest) return tooltip.classList.remove('visible');
+      tooltip.classList.add('visible');
+      tooltip.style.left = clientX + 'px';
+      tooltip.style.top = clientY + 'px';
+      let text = '';
+      if (state.view === 'galaxies') text = `${nearest.type}<br><span style="color:#94a9d6">${nearest.systems} solar systems · click to enter</span>`;
+      if (state.view === 'systems') text = `${nearest.type}<br><span style="color:#94a9d6">${nearest.planets} planets · click to enter</span>`;
+      if (state.view === 'planets') text = `${nearest.type} Planet<br><span style="color:#94a9d6">${nearest.moons} moons · orbit ${Math.round(nearest.orbit)} AU local units</span>`;
+      tooltip.innerHTML = `<b>${nearest.name}</b><br>${text}`;
+    }
+
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function highlightMatch(value, query) {
+      const escaped = escapeHtml(value);
+      const cleanQuery = query.trim();
+      if (!cleanQuery) return escaped;
+      const safeQuery = cleanQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return escaped.replace(new RegExp(safeQuery, 'ig'), match => `<mark>${match}</mark>`);
+    }
+
+    function centerOnWorld(x, y, preferredScale) {
+      state.scale = Math.min(state.maxScale, Math.max(state.minScale, preferredScale || state.scale));
+      state.offsetX = state.width / 2 - x * state.scale;
+      state.offsetY = state.height / 2 - y * state.scale;
+    }
+
+    function objectSearchText(type, name, detail, path) {
+      const raw = `${type} ${name} ${detail} ${path}`.toLowerCase();
+      const compact = raw.replace(/[^a-z0-9]/g, '');
+      return `${raw} ${compact}`;
+    }
+
+    function normalizeQuery(query) {
+      const raw = query.trim().toLowerCase();
+      return { raw, compact: raw.replace(/[^a-z0-9]/g, '') };
+    }
+
+    function searchUniverse(query) {
+      const { raw: q, compact } = normalizeQuery(query);
+      const results = [];
+      if (!q) return results;
+
+      for (const galaxy of galaxies) {
+        const galaxyPath = `Galaxy ${uniqueCode(galaxy.id)}`;
+        if (objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(q) || (compact && objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(compact))) {
+          results.push({ kind: 'Galaxy', name: galaxy.name, detail: galaxy.type, path: galaxyPath, galaxyId: galaxy.id });
+        }
+
+        for (let systemId = 0; systemId < 100; systemId++) {
+          const system = makeSystem(galaxy, systemId);
+          const systemPath = `${galaxy.name} › System ${uniqueCode(systemId)}`;
+          const systemSearchText = objectSearchText('system solar star', system.name, system.type, systemPath);
+          if (systemSearchText.includes(q) || (compact && systemSearchText.includes(compact))) {
+            results.push({ kind: 'System', name: system.name, detail: system.type, path: systemPath, galaxyId: galaxy.id, systemId });
+          }
+
+          for (let planetId = 0; planetId < 10; planetId++) {
+            const planet = makePlanet(system, planetId);
+            const planetPath = `${galaxy.name} › ${system.name} › Planet ${uniqueCode(planetId)}`;
+            const planetSearchText = objectSearchText('planet world', planet.name, planet.type, planetPath);
+            if (planetSearchText.includes(q) || (compact && planetSearchText.includes(compact))) {
+              results.push({ kind: 'Planet', name: planet.name, detail: `${planet.type} Planet · ${planet.moons} moons`, path: planetPath, galaxyId: galaxy.id, systemId, planetId });
+            }
+          }
+        }
+      }
+
+      return results;
+    }
+
+    function runSearch() {
+      const query = searchInput.value.trim();
+      searchResults.innerHTML = '';
+      if (!query) {
+        searchMeta.textContent = 'Search names, types, or address codes like G0A or S02.';
+        return;
+      }
+
+      searchMeta.textContent = 'Searching deterministic universe index…';
+      window.setTimeout(() => {
+        const results = searchUniverse(query);
+        const maxVisible = 500;
+        searchMeta.textContent = `${results.length.toLocaleString()} match${results.length === 1 ? '' : 'es'} found${results.length > maxVisible ? ` · showing first ${maxVisible.toLocaleString()}` : ''}.`;
+
+        if (!results.length) {
+          searchResults.innerHTML = '<div class="search-meta">No matching galaxies, systems, or planets found.</div>';
+          return;
+        }
+
+        searchResults.innerHTML = results.slice(0, maxVisible).map((result, index) => `
+          <button class="result-button" data-result-index="${index}">
+            <b>${highlightMatch(result.name, query)}</b>
+            <span>${result.kind} · ${highlightMatch(result.detail, query)}</span>
+            <span>${highlightMatch(result.path, query)}</span>
+          </button>
+        `).join('');
+
+        searchResults.querySelectorAll('.result-button').forEach(button => {
+          button.addEventListener('click', () => goToSearchResult(results[Number(button.dataset.resultIndex)]));
+        });
+      }, 20);
+    }
+
+    function goToSearchResult(result) {
+      const galaxy = galaxies[result.galaxyId];
+      tooltip.classList.remove('visible');
+
+      if (result.kind === 'Galaxy') {
+        setView('galaxies');
+        state.hover = galaxy;
+        centerOnWorld(galaxy.x, galaxy.y, 0.42);
+        return;
+      }
+
+      const system = makeSystem(galaxy, result.systemId);
+      if (result.kind === 'System') {
+        setView('systems', galaxy);
+        const visibleSystem = visibleObjects.find(o => o.id === result.systemId) || system;
+        state.hover = visibleSystem;
+        centerOnWorld(visibleSystem.x, visibleSystem.y, 1.15);
+        return;
+      }
+
+      setView('planets', system);
+      state.galaxy = galaxy;
+      const visiblePlanet = visibleObjects.find(o => o.id === result.planetId);
+      state.hover = visiblePlanet;
+      const pos = getPlanetPosition(visiblePlanet);
+      centerOnWorld(pos.x, pos.y, 1.25);
+      updateHud();
+    }
+
+    function zoomAt(clientX, clientY, factor) {
+      const before = screenToWorld(clientX, clientY);
+      state.scale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
+      state.offsetX = clientX - before.x * state.scale;
+      state.offsetY = clientY - before.y * state.scale;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      state.dragging = true;
+      state.clickMoved = false;
+      state.lastX = e.clientX;
+      state.lastY = e.clientY;
+      canvas.classList.add('dragging');
+    });
+
+    window.addEventListener('mouseup', () => {
+      state.dragging = false;
+      canvas.classList.remove('dragging');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (state.dragging) {
+        const dx = e.clientX - state.lastX;
+        const dy = e.clientY - state.lastY;
+        if (Math.hypot(dx, dy) > 2) state.clickMoved = true;
+        state.offsetX += dx;
+        state.offsetY += dy;
+        state.lastX = e.clientX;
+        state.lastY = e.clientY;
+        tooltip.classList.remove('visible');
+      } else updateHover(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (state.clickMoved) return;
+      const target = hitTest(e.clientX, e.clientY);
+      if (!target) return;
+      if (state.view === 'galaxies') setView('systems', target);
+      else if (state.view === 'systems') setView('planets', target);
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.88);
+    }, { passive: false });
+
+    backButton.addEventListener('click', () => {
+      if (state.view === 'planets') setView('systems', state.galaxy);
+      else if (state.view === 'systems') setView('galaxies');
+    });
+
+    document.getElementById('zoomIn').addEventListener('click', () => zoomAt(state.width / 2, state.height / 2, 1.18));
+    document.getElementById('zoomOut').addEventListener('click', () => zoomAt(state.width / 2, state.height / 2, 0.84));
+    document.getElementById('reset').addEventListener('click', resetView);
+
+
+    searchButton.addEventListener('click', runSearch);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSearch();
+    });
+    searchInput.addEventListener('input', () => {
+      if (!searchInput.value.trim()) runSearch();
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    updateHud();
+    draw();
+  </script>
+</body>
+</html>
