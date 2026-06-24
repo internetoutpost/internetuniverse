@@ -588,12 +588,23 @@
 
       resetView();
       updateHud();
-      preloadViewNames();
+      if (view === 'planets') preloadPlanetNames();
+    }
+
+    function hasDisplayName(kind, id) {
+      return claimedNameCache.has(getObjectCacheKey(kind, id));
     }
 
     function getDisplayNameOrLoading(kind, id) {
       const cacheKey = getObjectCacheKey(kind, id);
       return claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : 'Loading...';
+    }
+
+    function refreshHudName(kind, id, expectedView, token) {
+      if (hasDisplayName(kind, id)) return;
+      getClaimedDisplayName(kind, id).then(() => {
+        if (state.view === expectedView && token === state.hudLookupToken) updateHud();
+      });
     }
 
     function updateHud() {
@@ -617,9 +628,9 @@
         details.innerHTML = `<p><strong>${state.galaxy.type}:</strong> This galaxy contains 100 procedural solar systems. Hover for names and click to inspect planets.</p>`;
         backButton.disabled = false;
 
-        getClaimedDisplayName('galaxy', galaxyId).then(() => {
-          if (state.view === 'systems' && token === state.hudLookupToken) updateHud();
-        });
+        // Only the selected galaxy name is checked for the HUD here.
+        // System names stay lazy and are queried only when a system is hovered.
+        refreshHudName('galaxy', galaxyId, 'systems', token);
         return;
       }
 
@@ -633,27 +644,20 @@
       details.innerHTML = `<p><strong>${state.system.type}:</strong> Ten planets orbit this system. Orbital paths are drawn to scale for this local map.</p>`;
       backButton.disabled = false;
 
-      Promise.all([
-        getClaimedDisplayName('galaxy', galaxyId),
-        getClaimedDisplayName('system', systemId)
-      ]).then(() => {
-        if (state.view === 'planets' && token === state.hudLookupToken) updateHud();
-      });
+      refreshHudName('galaxy', galaxyId, 'planets', token);
+      refreshHudName('system', systemId, 'planets', token);
     }
 
-    function preloadViewNames() {
-      if (state.view === 'systems' && state.galaxy) {
-        getClaimedDisplayName('galaxy', state.galaxy.name).then(() => updateHud());
-      }
+    function preloadPlanetNames() {
+      if (state.view !== 'planets' || !state.galaxy || !state.system) return;
 
-      if (state.view === 'planets' && state.galaxy && state.system) {
-        getClaimedDisplayName('galaxy', state.galaxy.name).then(() => updateHud());
-        getClaimedDisplayName('system', state.system.name).then(() => updateHud());
-        for (const planet of visibleObjects) {
-          getClaimedDisplayName('planet', planet.name).then(displayName => {
-            planet.displayName = displayName;
-          });
-        }
+      // Planet labels are always visible in the planet view, so they are the only
+      // objects that are eagerly checked on entry. Systems are not bulk-loaded.
+      for (const planet of visibleObjects) {
+        planet.displayName = 'Loading...';
+        getClaimedDisplayName('planet', planet.name).then(displayName => {
+          planet.displayName = displayName;
+        });
       }
     }
 
