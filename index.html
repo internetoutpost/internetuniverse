@@ -244,6 +244,30 @@
       line-height: 1.35;
     }
 
+    .claim-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      vertical-align: middle;
+    }
+
+    .claim-tag.claimed {
+      color: #3a2900;
+      background: linear-gradient(135deg, #ffe08a, #ffb72b);
+      border: 1px solid rgba(255, 224, 138, 0.85);
+      box-shadow: 0 0 14px rgba(255, 183, 43, 0.18);
+    }
+
+    .claim-tag.unclaimed {
+      color: #d6deef;
+      background: rgba(148, 169, 214, 0.16);
+      border: 1px solid rgba(148, 169, 214, 0.28);
+    }
+
     mark {
       color: #ffffff;
       background: rgba(134, 247, 255, 0.22);
@@ -338,6 +362,7 @@
     };
 
     const claimedNameCache = new Map();
+    const claimedStatusCache = new Map();
     const claimedNameRequests = new Map();
 
     const state = {
@@ -624,7 +649,7 @@
         const galaxyDisplayName = getDisplayNameOrLoading('galaxy', galaxyId);
         title.textContent = galaxyDisplayName;
         instructions.innerHTML = '<strong>Click</strong> a solar system to enter. Use <strong>Back</strong> to return to galaxies.';
-        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">100 systems</span>';
+        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">100 systems</span><span class="crumb">1,000 planets</span>';
         details.innerHTML = `<p><strong>${state.galaxy.type}:</strong> This galaxy contains 100 procedural solar systems. Hover for names and click to inspect planets.</p>`;
         backButton.disabled = false;
 
@@ -862,16 +887,23 @@
       return o.displayName || fallback;
     }
 
-    async function getClaimedDisplayName(kind, id) {
+    async function getClaimedInfo(kind, id) {
       const config = claimedNameTables[kind];
       const cacheKey = getObjectCacheKey(kind, id);
 
       if (!config || !supabaseClient) {
         claimedNameCache.set(cacheKey, id);
-        return id;
+        claimedStatusCache.set(cacheKey, false);
+        return { displayName: id, claimed: false };
       }
 
-      if (claimedNameCache.has(cacheKey)) return claimedNameCache.get(cacheKey);
+      if (claimedNameCache.has(cacheKey) && claimedStatusCache.has(cacheKey)) {
+        return {
+          displayName: claimedNameCache.get(cacheKey),
+          claimed: claimedStatusCache.get(cacheKey)
+        };
+      }
+
       if (claimedNameRequests.has(cacheKey)) return claimedNameRequests.get(cacheKey);
 
       const request = supabaseClient
@@ -881,21 +913,31 @@
         .maybeSingle()
         .then(({ data, error }) => {
           if (error) console.warn('Supabase claimed-name lookup failed:', { kind, id, table: config.table, error });
-          const displayName = error || !data || !data[config.nameColumn]
-            ? id
-            : data[config.nameColumn];
+          const claimed = !error && !!data;
+          const displayName = claimed && data[config.nameColumn] ? data[config.nameColumn] : id;
           claimedNameCache.set(cacheKey, displayName);
+          claimedStatusCache.set(cacheKey, claimed);
           claimedNameRequests.delete(cacheKey);
-          return displayName;
+          return { displayName, claimed };
         })
         .catch(() => {
           claimedNameCache.set(cacheKey, id);
+          claimedStatusCache.set(cacheKey, false);
           claimedNameRequests.delete(cacheKey);
-          return id;
+          return { displayName: id, claimed: false };
         });
 
       claimedNameRequests.set(cacheKey, request);
       return request;
+    }
+
+    async function getClaimedDisplayName(kind, id) {
+      const info = await getClaimedInfo(kind, id);
+      return info.displayName;
+    }
+
+    function getClaimTagHtml(claimed) {
+      return `<span class="claim-tag ${claimed ? 'claimed' : 'unclaimed'}">${claimed ? 'Claimed' : 'Unclaimed'}</span>`;
     }
 
     function buildTooltipBody(nearest) {
@@ -919,20 +961,21 @@
       const token = ++state.hoverLookupToken;
       const cacheKey = getObjectCacheKey(kind, proceduralId);
       const cachedName = claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : null;
+      const cachedClaimed = claimedStatusCache.has(cacheKey) ? claimedStatusCache.get(cacheKey) : null;
       const body = buildTooltipBody(nearest);
 
-      tooltip.innerHTML = cachedName
-        ? `<b>${escapeHtml(cachedName)}</b><br>${body}`
+      tooltip.innerHTML = cachedName && cachedClaimed !== null
+        ? `<b>${escapeHtml(cachedName)}</b>${getClaimTagHtml(cachedClaimed)}<br>${body}`
         : `<b>Loading...</b><br>${body}`;
 
       // Query Supabase only when needed, and cache the result.
-      if (previousHover === nearest && cachedName) return;
+      if (previousHover === nearest && cachedName && cachedClaimed !== null) return;
 
-      const displayName = await getClaimedDisplayName(kind, proceduralId);
+      const info = await getClaimedInfo(kind, proceduralId);
       if (state.hover !== nearest || token !== state.hoverLookupToken) return;
 
-      nearest.displayName = displayName;
-      tooltip.innerHTML = `<b>${escapeHtml(displayName)}</b><br>${body}`;
+      nearest.displayName = info.displayName;
+      tooltip.innerHTML = `<b>${escapeHtml(info.displayName)}</b>${getClaimTagHtml(info.claimed)}<br>${body}`;
     }
 
 
@@ -964,7 +1007,97 @@
       return `${type} ${name} ${detail} ${path}`.toLowerCase();
     }
 
-    function searchUniverse(query, typeFilter = 'all') {
+    function parseUniqueCode(code) {
+      const value = parseInt(code, 36);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function getObjectLocationFromId(kind, id) {
+      if (kind === 'galaxy') {
+        const match = String(id).match(/G-([0-9A-Z]+)$/i);
+        if (!match) return null;
+        const galaxyId = parseUniqueCode(match[1]);
+        if (galaxyId === null || galaxyId < 0 || galaxyId >= galaxies.length) return null;
+        const galaxy = galaxies[galaxyId];
+        return galaxy && galaxy.name === id
+          ? { kind: 'Galaxy', name: id, detail: galaxy.type, path: `Galaxy ${uniqueCode(galaxy.id)}`, galaxyId }
+          : null;
+      }
+
+      if (kind === 'system') {
+        const match = String(id).match(/G([0-9A-Z]+)-S([0-9A-Z]+)$/i);
+        if (!match) return null;
+        const galaxyId = parseUniqueCode(match[1]);
+        const systemId = parseUniqueCode(match[2]);
+        if (galaxyId === null || systemId === null || galaxyId < 0 || galaxyId >= galaxies.length || systemId < 0 || systemId >= 100) return null;
+        const galaxy = galaxies[galaxyId];
+        const system = makeSystem(galaxy, systemId);
+        return system.name === id
+          ? { kind: 'System', name: id, detail: system.type, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId }
+          : null;
+      }
+
+      if (kind === 'planet') {
+        const match = String(id).match(/G([0-9A-Z]+)-S([0-9A-Z]+)-P([0-9A-Z]+)$/i);
+        if (!match) return null;
+        const galaxyId = parseUniqueCode(match[1]);
+        const systemId = parseUniqueCode(match[2]);
+        const planetId = parseUniqueCode(match[3]);
+        if (galaxyId === null || systemId === null || planetId === null || galaxyId < 0 || galaxyId >= galaxies.length || systemId < 0 || systemId >= 100 || planetId < 0 || planetId >= 10) return null;
+        const galaxy = galaxies[galaxyId];
+        const system = makeSystem(galaxy, systemId);
+        const planet = makePlanet(system, planetId);
+        return planet.name === id
+          ? { kind: 'Planet', name: id, detail: `${planet.type} Planet · ${planet.moons} moons`, path: `${galaxy.name} › ${system.name} › Planet ${uniqueCode(planetId)}`, galaxyId, systemId, planetId }
+          : null;
+      }
+
+      return null;
+    }
+
+    function kindNameToKey(kindName) {
+      return kindName.toLowerCase();
+    }
+
+    async function searchClaimedDatabase(query, typeFilter, limit = 10) {
+      if (!supabaseClient) return [];
+      const q = query.trim();
+      if (!q) return [];
+
+      const include = {
+        galaxy: typeFilter === 'all' || typeFilter === 'galaxies',
+        system: typeFilter === 'all' || typeFilter === 'systems',
+        planet: typeFilter === 'all' || typeFilter === 'planets'
+      };
+      const entries = Object.entries(claimedNameTables).filter(([kind]) => include[kind]);
+      const pattern = `%${q.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
+      const perTableLimit = Math.max(1, limit);
+      const batches = await Promise.all(entries.map(async ([kind, config]) => {
+        const { data, error } = await supabaseClient
+          .from(config.table)
+          .select(`${config.idColumn}, ${config.nameColumn}`)
+          .or(`${config.idColumn}.ilike.${pattern},${config.nameColumn}.ilike.${pattern}`)
+          .limit(perTableLimit);
+        if (error) {
+          console.warn('Supabase claimed search failed:', { kind, table: config.table, error });
+          return [];
+        }
+        return (data || []).map(row => {
+          const id = row[config.idColumn];
+          const claimedName = row[config.nameColumn] || id;
+          const location = getObjectLocationFromId(kind, id);
+          if (!location) return null;
+          const cacheKey = getObjectCacheKey(kind, id);
+          claimedNameCache.set(cacheKey, claimedName);
+          claimedStatusCache.set(cacheKey, true);
+          return { ...location, displayName: claimedName, claimed: true, matchedClaimedRecord: true };
+        }).filter(Boolean);
+      }));
+      return batches.flat().slice(0, limit);
+    }
+
+    function collectProceduralSearchResults(query, typeFilter = 'all', limit = 10, skipKeys = new Set()) {
+
       const q = query.trim().toLowerCase();
       const results = [];
       const includeGalaxies = typeFilter === 'all' || typeFilter === 'galaxies';
@@ -975,7 +1108,10 @@
       for (const galaxy of galaxies) {
         const galaxyPath = `Galaxy ${uniqueCode(galaxy.id)}`;
         if (includeGalaxies && objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(q)) {
-          results.push({ kind: 'Galaxy', name: galaxy.name, detail: galaxy.type, path: galaxyPath, galaxyId: galaxy.id });
+          const result = { kind: 'Galaxy', name: galaxy.name, detail: galaxy.type, path: galaxyPath, galaxyId: galaxy.id };
+          const key = `galaxy:${result.name}`;
+          if (!skipKeys.has(key)) results.push(result);
+          if (results.length >= limit) return results;
         }
 
         if (!includeSystems && !includePlanets) continue;
@@ -984,7 +1120,10 @@
           const system = makeSystem(galaxy, systemId);
           const systemPath = `${galaxy.name} › System ${uniqueCode(systemId)}`;
           if (includeSystems && objectSearchText('system solar star', system.name, system.type, systemPath).includes(q)) {
-            results.push({ kind: 'System', name: system.name, detail: system.type, path: systemPath, galaxyId: galaxy.id, systemId });
+            const result = { kind: 'System', name: system.name, detail: system.type, path: systemPath, galaxyId: galaxy.id, systemId };
+            const key = `system:${result.name}`;
+            if (!skipKeys.has(key)) results.push(result);
+            if (results.length >= limit) return results;
           }
 
           if (!includePlanets) continue;
@@ -993,7 +1132,10 @@
             const planet = makePlanet(system, planetId);
             const planetPath = `${galaxy.name} › ${system.name} › Planet ${uniqueCode(planetId)}`;
             if (objectSearchText('planet world', planet.name, planet.type, planetPath).includes(q)) {
-              results.push({ kind: 'Planet', name: planet.name, detail: `${planet.type} Planet · ${planet.moons} moons`, path: planetPath, galaxyId: galaxy.id, systemId, planetId });
+              const result = { kind: 'Planet', name: planet.name, detail: `${planet.type} Planet · ${planet.moons} moons`, path: planetPath, galaxyId: galaxy.id, systemId, planetId };
+              const key = `planet:${result.name}`;
+              if (!skipKeys.has(key)) results.push(result);
+              if (results.length >= limit) return results;
             }
           }
         }
@@ -1002,39 +1144,105 @@
       return results;
     }
 
-    function runSearch() {
+    async function markResultClaimStatuses(results) {
+      const unknown = results.filter(result => {
+        const kind = kindNameToKey(result.kind);
+        const cacheKey = getObjectCacheKey(kind, result.name);
+        return !claimedStatusCache.has(cacheKey);
+      });
+
+      const byKind = { galaxy: [], system: [], planet: [] };
+      for (const result of unknown) byKind[kindNameToKey(result.kind)].push(result.name);
+
+      await Promise.all(Object.entries(byKind).map(async ([kind, ids]) => {
+        if (!ids.length || !supabaseClient) {
+          for (const id of ids) {
+            const cacheKey = getObjectCacheKey(kind, id);
+            claimedNameCache.set(cacheKey, id);
+            claimedStatusCache.set(cacheKey, false);
+          }
+          return;
+        }
+
+        const config = claimedNameTables[kind];
+        const { data, error } = await supabaseClient
+          .from(config.table)
+          .select(`${config.idColumn}, ${config.nameColumn}`)
+          .in(config.idColumn, ids);
+
+        const found = new Map();
+        if (!error) {
+          for (const row of data || []) found.set(row[config.idColumn], row[config.nameColumn] || row[config.idColumn]);
+        } else {
+          console.warn('Supabase result status lookup failed:', { kind, error });
+        }
+
+        for (const id of ids) {
+          const cacheKey = getObjectCacheKey(kind, id);
+          if (found.has(id)) {
+            claimedNameCache.set(cacheKey, found.get(id));
+            claimedStatusCache.set(cacheKey, true);
+          } else {
+            claimedNameCache.set(cacheKey, id);
+            claimedStatusCache.set(cacheKey, false);
+          }
+        }
+      }));
+
+      return results.map(result => {
+        const kind = kindNameToKey(result.kind);
+        const cacheKey = getObjectCacheKey(kind, result.name);
+        return {
+          ...result,
+          displayName: claimedNameCache.get(cacheKey) || result.name,
+          claimed: claimedStatusCache.get(cacheKey) || false
+        };
+      });
+    }
+
+    async function runSearch() {
       const query = searchInput.value.trim();
       const typeFilter = searchType.value;
       const typeLabel = searchType.options[searchType.selectedIndex].text.toLowerCase();
+      const searchToken = Date.now() + Math.random();
+      runSearch.latestToken = searchToken;
       searchResults.innerHTML = '';
       if (!query) {
         searchMeta.textContent = 'Search names, types, or address codes like G0A or S02.';
         return;
       }
 
-      searchMeta.textContent = `Searching ${typeLabel} in the deterministic universe index…`;
-      window.setTimeout(() => {
-        const results = searchUniverse(query, typeFilter);
-        const maxVisible = 500;
-        searchMeta.textContent = `${results.length.toLocaleString()} ${typeLabel} match${results.length === 1 ? '' : 'es'} found${results.length > maxVisible ? ` · showing first ${maxVisible.toLocaleString()}` : ''}.`;
+      const maxVisible = 10;
+      searchMeta.textContent = `Searching ${typeLabel} and claimed records…`;
 
-        if (!results.length) {
-          searchResults.innerHTML = `<div class="search-meta">No matching ${typeLabel} found.</div>`;
-          return;
-        }
+      const claimedResults = await searchClaimedDatabase(query, typeFilter, maxVisible);
+      if (runSearch.latestToken !== searchToken) return;
 
-        searchResults.innerHTML = results.slice(0, maxVisible).map((result, index) => `
-          <button class="result-button" data-result-index="${index}">
-            <b>${highlightMatch(result.name, query)}</b>
-            <span>${result.kind} · ${highlightMatch(result.detail, query)}</span>
-            <span>${highlightMatch(result.path, query)}</span>
-          </button>
-        `).join('');
+      const skipKeys = new Set(claimedResults.map(result => `${kindNameToKey(result.kind)}:${result.name}`));
+      const proceduralResults = collectProceduralSearchResults(query, typeFilter, maxVisible - claimedResults.length, skipKeys);
+      let results = [...claimedResults, ...proceduralResults].slice(0, maxVisible);
+      results = await markResultClaimStatuses(results);
+      if (runSearch.latestToken !== searchToken) return;
 
-        searchResults.querySelectorAll('.result-button').forEach(button => {
-          button.addEventListener('click', () => goToSearchResult(results[Number(button.dataset.resultIndex)]));
-        });
-      }, 20);
+      searchMeta.textContent = `${results.length.toLocaleString()} ${typeLabel} result${results.length === 1 ? '' : 's'} shown · claimed matches appear first.`;
+
+      if (!results.length) {
+        searchResults.innerHTML = `<div class="search-meta">No matching ${typeLabel} found.</div>`;
+        return;
+      }
+
+      searchResults.innerHTML = results.map((result, index) => `
+        <button class="result-button" data-result-index="${index}">
+          <b>${highlightMatch(result.displayName || result.name, query)} ${getClaimTagHtml(!!result.claimed)}</b>
+          <span>${result.kind} · ${highlightMatch(result.detail, query)}</span>
+          <span>ID: ${highlightMatch(result.name, query)}</span>
+          <span>${highlightMatch(result.path, query)}</span>
+        </button>
+      `).join('');
+
+      searchResults.querySelectorAll('.result-button').forEach(button => {
+        button.addEventListener('click', () => goToSearchResult(results[Number(button.dataset.resultIndex)]));
+      });
     }
 
     function goToSearchResult(result) {
