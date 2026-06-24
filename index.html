@@ -308,6 +308,8 @@
     <div id="searchResults" class="search-results" aria-live="polite"></div>
   </section>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     const canvas = document.getElementById('universe');
     const ctx = canvas.getContext('2d');
@@ -322,6 +324,21 @@
     const searchType = document.getElementById('searchType');
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
+
+    const SUPABASE_URL = 'https://dpmdptudldphkfovlali.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
+    const supabaseClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+      : null;
+
+    const claimedNameTables = {
+      galaxy: { table: 'Claimed Galaxies', idColumn: 'galaxyID', nameColumn: 'galaxyName' },
+      system: { table: 'Claimed Systems', idColumn: 'systemID', nameColumn: 'systemName' },
+      planet: { table: 'Claimed Planets', idColumn: 'planetID', nameColumn: 'planetName' }
+    };
+
+    const claimedNameCache = new Map();
+    const claimedNameRequests = new Map();
 
     const state = {
       width: 0,
@@ -339,7 +356,8 @@
       view: 'galaxies',
       galaxy: null,
       system: null,
-      time: 0
+      time: 0,
+      hoverLookupToken: 0
     };
 
     const galaxyNames = ['Aurelia', 'Vesper', 'Orion', 'Nyx', 'Helion', 'Caldera', 'Viridian', 'Sable', 'Eos', 'Tir', 'Umbra', 'Lyra', 'Cobalt', 'Morrow', 'Kepler', 'Iris'];
@@ -746,7 +764,7 @@
     function label(o, p, radius) {
       ctx.font = `${state.hover === o ? 15 : 12}px Inter, sans-serif`;
       ctx.fillStyle = state.hover === o ? '#ffffff' : 'rgba(232, 240, 255, 0.78)';
-      ctx.fillText(o.name, p.x + radius + 10, p.y + 4);
+      ctx.fillText(getCachedDisplayName(o) || o.name, p.x + radius + 10, p.y + 4);
     }
 
     function draw() {
@@ -778,19 +796,90 @@
       return nearest;
     }
 
-    function updateHover(clientX, clientY) {
+    function getCurrentObjectKind() {
+      if (state.view === 'galaxies') return 'galaxy';
+      if (state.view === 'systems') return 'system';
+      return 'planet';
+    }
+
+    function getObjectCacheKey(kind, id) {
+      return `${kind}:${id}`;
+    }
+
+    function getCachedDisplayName(o, kind = getCurrentObjectKind()) {
+      const cacheKey = getObjectCacheKey(kind, o.name);
+      return claimedNameCache.get(cacheKey) || o.displayName || o.name;
+    }
+
+    async function getClaimedDisplayName(kind, id) {
+      const config = claimedNameTables[kind];
+      const cacheKey = getObjectCacheKey(kind, id);
+
+      if (!config || !supabaseClient) {
+        claimedNameCache.set(cacheKey, id);
+        return id;
+      }
+
+      if (claimedNameCache.has(cacheKey)) return claimedNameCache.get(cacheKey);
+      if (claimedNameRequests.has(cacheKey)) return claimedNameRequests.get(cacheKey);
+
+      const request = supabaseClient
+        .from(config.table)
+        .select(config.nameColumn)
+        .eq(config.idColumn, id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          const displayName = error || !data || !data[config.nameColumn]
+            ? id
+            : data[config.nameColumn];
+          claimedNameCache.set(cacheKey, displayName);
+          claimedNameRequests.delete(cacheKey);
+          return displayName;
+        })
+        .catch(() => {
+          claimedNameCache.set(cacheKey, id);
+          claimedNameRequests.delete(cacheKey);
+          return id;
+        });
+
+      claimedNameRequests.set(cacheKey, request);
+      return request;
+    }
+
+    function buildTooltipBody(nearest) {
+      if (state.view === 'galaxies') return `${nearest.type}<br><span style="color:#94a9d6">${nearest.systems} solar systems · click to enter</span>`;
+      if (state.view === 'systems') return `${nearest.type}<br><span style="color:#94a9d6">${nearest.planets} planets · click to enter</span>`;
+      return `${nearest.type} Planet<br><span style="color:#94a9d6">${nearest.moons} moons · orbit ${Math.round(nearest.orbit)} AU local units</span>`;
+    }
+
+    async function updateHover(clientX, clientY) {
       const nearest = hitTest(clientX, clientY);
+      const previousHover = state.hover;
       state.hover = nearest;
       if (!nearest) return tooltip.classList.remove('visible');
+
       tooltip.classList.add('visible');
       tooltip.style.left = clientX + 'px';
       tooltip.style.top = clientY + 'px';
-      let text = '';
-      if (state.view === 'galaxies') text = `${nearest.type}<br><span style="color:#94a9d6">${nearest.systems} solar systems · click to enter</span>`;
-      if (state.view === 'systems') text = `${nearest.type}<br><span style="color:#94a9d6">${nearest.planets} planets · click to enter</span>`;
-      if (state.view === 'planets') text = `${nearest.type} Planet<br><span style="color:#94a9d6">${nearest.moons} moons · orbit ${Math.round(nearest.orbit)} AU local units</span>`;
-      tooltip.innerHTML = `<b>${nearest.name}</b><br>${text}`;
+
+      const kind = getCurrentObjectKind();
+      const proceduralId = nearest.name;
+      const token = ++state.hoverLookupToken;
+      const cachedName = getCachedDisplayName(nearest, kind);
+      const body = buildTooltipBody(nearest);
+
+      tooltip.innerHTML = `<b>${escapeHtml(cachedName)}</b><br>${body}`;
+
+      // Query Supabase only when the hovered object changes, and cache the result.
+      if (previousHover === nearest && claimedNameCache.has(getObjectCacheKey(kind, proceduralId))) return;
+
+      const displayName = await getClaimedDisplayName(kind, proceduralId);
+      if (state.hover !== nearest || token !== state.hoverLookupToken) return;
+
+      nearest.displayName = displayName;
+      tooltip.innerHTML = `<b>${escapeHtml(displayName)}</b><br>${body}`;
     }
+
 
 
     function escapeHtml(value) {
