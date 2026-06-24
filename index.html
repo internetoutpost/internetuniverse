@@ -172,9 +172,7 @@
       gap: 8px;
     }
 
-    .search-row input {
-      flex: 1;
-      min-width: 0;
+    .search-row input, .search-row select {
       height: 42px;
       border: 1px solid var(--panel-border);
       border-radius: 14px;
@@ -185,7 +183,17 @@
       outline: none;
     }
 
-    .search-row input:focus {
+    .search-row input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-row select {
+      width: 118px;
+      cursor: pointer;
+    }
+
+    .search-row input:focus, .search-row select:focus {
       border-color: rgba(134, 247, 255, 0.7);
       box-shadow: 0 0 0 3px rgba(134, 247, 255, 0.08);
     }
@@ -253,6 +261,8 @@
         max-height: 36vh;
       }
 
+      .search-row { flex-wrap: wrap; }
+      .search-row select { flex: 1 0 120px; }
       .search-results { max-height: 20vh; }
     }
   </style>
@@ -286,6 +296,12 @@
   <section class="search-panel" aria-label="Search generated universe">
     <div class="search-row">
       <input id="searchInput" type="search" placeholder="Search galaxies, systems, planets…" autocomplete="off" />
+      <select id="searchType" aria-label="Search type">
+        <option value="all">All</option>
+        <option value="galaxies">Galaxies</option>
+        <option value="systems">Systems</option>
+        <option value="planets">Planets</option>
+      </select>
       <button id="searchButton">Search</button>
     </div>
     <div id="searchMeta" class="search-meta">Search names, types, or address codes like G0A or S02.</div>
@@ -303,6 +319,7 @@
     const backButton = document.getElementById('back');
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
+    const searchType = document.getElementById('searchType');
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
 
@@ -650,7 +667,7 @@
       ctx.arc(p.x, p.y, Math.max(1.8, radius * 0.34), 0, Math.PI * 2);
       ctx.fill();
 
-      if (state.scale > 0.16 || isHover) label(o, p, radius);
+      if (isHover) label(o, p, radius);
     }
 
     function drawSystem(o) {
@@ -684,7 +701,7 @@
       ctx.arc(p.x, p.y, Math.max(1.4, radius * 0.22), 0, Math.PI * 2);
       ctx.fill();
 
-      if (state.scale > 0.36 || isHover) label(o, p, radius);
+      if (isHover) label(o, p, radius);
     }
 
     function drawPlanetSystem() {
@@ -800,40 +817,38 @@
     }
 
     function objectSearchText(type, name, detail, path) {
-      const raw = `${type} ${name} ${detail} ${path}`.toLowerCase();
-      const compact = raw.replace(/[^a-z0-9]/g, '');
-      return `${raw} ${compact}`;
+      return `${type} ${name} ${detail} ${path}`.toLowerCase();
     }
 
-    function normalizeQuery(query) {
-      const raw = query.trim().toLowerCase();
-      return { raw, compact: raw.replace(/[^a-z0-9]/g, '') };
-    }
-
-    function searchUniverse(query) {
-      const { raw: q, compact } = normalizeQuery(query);
+    function searchUniverse(query, typeFilter = 'all') {
+      const q = query.trim().toLowerCase();
       const results = [];
+      const includeGalaxies = typeFilter === 'all' || typeFilter === 'galaxies';
+      const includeSystems = typeFilter === 'all' || typeFilter === 'systems';
+      const includePlanets = typeFilter === 'all' || typeFilter === 'planets';
       if (!q) return results;
 
       for (const galaxy of galaxies) {
         const galaxyPath = `Galaxy ${uniqueCode(galaxy.id)}`;
-        if (objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(q) || (compact && objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(compact))) {
+        if (includeGalaxies && objectSearchText('galaxy', galaxy.name, galaxy.type, galaxyPath).includes(q)) {
           results.push({ kind: 'Galaxy', name: galaxy.name, detail: galaxy.type, path: galaxyPath, galaxyId: galaxy.id });
         }
+
+        if (!includeSystems && !includePlanets) continue;
 
         for (let systemId = 0; systemId < 100; systemId++) {
           const system = makeSystem(galaxy, systemId);
           const systemPath = `${galaxy.name} › System ${uniqueCode(systemId)}`;
-          const systemSearchText = objectSearchText('system solar star', system.name, system.type, systemPath);
-          if (systemSearchText.includes(q) || (compact && systemSearchText.includes(compact))) {
+          if (includeSystems && objectSearchText('system solar star', system.name, system.type, systemPath).includes(q)) {
             results.push({ kind: 'System', name: system.name, detail: system.type, path: systemPath, galaxyId: galaxy.id, systemId });
           }
+
+          if (!includePlanets) continue;
 
           for (let planetId = 0; planetId < 10; planetId++) {
             const planet = makePlanet(system, planetId);
             const planetPath = `${galaxy.name} › ${system.name} › Planet ${uniqueCode(planetId)}`;
-            const planetSearchText = objectSearchText('planet world', planet.name, planet.type, planetPath);
-            if (planetSearchText.includes(q) || (compact && planetSearchText.includes(compact))) {
+            if (objectSearchText('planet world', planet.name, planet.type, planetPath).includes(q)) {
               results.push({ kind: 'Planet', name: planet.name, detail: `${planet.type} Planet · ${planet.moons} moons`, path: planetPath, galaxyId: galaxy.id, systemId, planetId });
             }
           }
@@ -845,20 +860,22 @@
 
     function runSearch() {
       const query = searchInput.value.trim();
+      const typeFilter = searchType.value;
+      const typeLabel = searchType.options[searchType.selectedIndex].text.toLowerCase();
       searchResults.innerHTML = '';
       if (!query) {
         searchMeta.textContent = 'Search names, types, or address codes like G0A or S02.';
         return;
       }
 
-      searchMeta.textContent = 'Searching deterministic universe index…';
+      searchMeta.textContent = `Searching ${typeLabel} in the deterministic universe index…`;
       window.setTimeout(() => {
-        const results = searchUniverse(query);
+        const results = searchUniverse(query, typeFilter);
         const maxVisible = 500;
-        searchMeta.textContent = `${results.length.toLocaleString()} match${results.length === 1 ? '' : 'es'} found${results.length > maxVisible ? ` · showing first ${maxVisible.toLocaleString()}` : ''}.`;
+        searchMeta.textContent = `${results.length.toLocaleString()} ${typeLabel} match${results.length === 1 ? '' : 'es'} found${results.length > maxVisible ? ` · showing first ${maxVisible.toLocaleString()}` : ''}.`;
 
         if (!results.length) {
-          searchResults.innerHTML = '<div class="search-meta">No matching galaxies, systems, or planets found.</div>';
+          searchResults.innerHTML = `<div class="search-meta">No matching ${typeLabel} found.</div>`;
           return;
         }
 
@@ -968,6 +985,7 @@
     searchInput.addEventListener('input', () => {
       if (!searchInput.value.trim()) runSearch();
     });
+    searchType.addEventListener('change', runSearch);
 
     window.addEventListener('resize', resize);
     resize();
