@@ -332,9 +332,9 @@
       : null;
 
     const claimedNameTables = {
-      galaxy: { table: 'Claimed Galaxies', idColumn: 'galaxyID', nameColumn: 'galaxyName' },
-      system: { table: 'Claimed Systems', idColumn: 'systemID', nameColumn: 'systemName' },
-      planet: { table: 'Claimed Planets', idColumn: 'planetID', nameColumn: 'planetName' }
+      galaxy: { table: 'claimed_galaxies', idColumn: 'galaxyID', nameColumn: 'galaxyName' },
+      system: { table: 'claimed_systems', idColumn: 'systemID', nameColumn: 'systemName' },
+      planet: { table: 'claimed_planets', idColumn: 'planetID', nameColumn: 'planetName' }
     };
 
     const claimedNameCache = new Map();
@@ -829,6 +829,7 @@
         .eq(config.idColumn, id)
         .maybeSingle()
         .then(({ data, error }) => {
+          if (error) console.warn('Supabase claimed-name lookup failed:', { kind, id, table: config.table, error });
           const displayName = error || !data || !data[config.nameColumn]
             ? id
             : data[config.nameColumn];
