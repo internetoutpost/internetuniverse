@@ -1265,13 +1265,15 @@
         return;
       }
 
-      setView('planets', system);
+      // Match manual navigation state before entering the planet view.
+      // setView('planets') calls updateHud() and preloadPlanetNames(), both of
+      // which need state.galaxy to already be set.
       state.galaxy = galaxy;
+      setView('planets', system);
       const visiblePlanet = visibleObjects.find(o => o.id === result.planetId);
       state.hover = visiblePlanet;
       const pos = getPlanetPosition(visiblePlanet);
       centerOnWorld(pos.x, pos.y, 1.25);
-      updateHud();
     }
 
     function zoomAt(clientX, clientY, factor) {
