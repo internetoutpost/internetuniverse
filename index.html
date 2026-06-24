@@ -357,7 +357,8 @@
       galaxy: null,
       system: null,
       time: 0,
-      hoverLookupToken: 0
+      hoverLookupToken: 0,
+      hudLookupToken: 0
     };
 
     const galaxyNames = ['Aurelia', 'Vesper', 'Orion', 'Nyx', 'Helion', 'Caldera', 'Viridian', 'Sable', 'Eos', 'Tir', 'Umbra', 'Lyra', 'Cobalt', 'Morrow', 'Kepler', 'Iris'];
@@ -423,7 +424,7 @@
         id: i,
         galaxyId: galaxy.id,
         name: makeSystemName(galaxy, i),
-        type: rand(galaxy.id * 300 + i) > 0.78 ? 'Binary Star System' : 'Solar System',
+        type: 'Solar System',
         x: Math.cos(a) * r + (rand(i * 13 + galaxy.id) - 0.5) * 140,
         y: Math.sin(a) * r + (rand(i * 23 + galaxy.id) - 0.5) * 140,
         size: 10 + rand(galaxy.id * 53 + i) * 13,
@@ -587,27 +588,72 @@
 
       resetView();
       updateHud();
+      preloadViewNames();
+    }
+
+    function getDisplayNameOrLoading(kind, id) {
+      const cacheKey = getObjectCacheKey(kind, id);
+      return claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : 'Loading...';
     }
 
     function updateHud() {
+      const token = ++state.hudLookupToken;
+
       if (state.view === 'galaxies') {
         title.textContent = 'Observable Cluster';
         instructions.innerHTML = '<strong>Click</strong> a galaxy to enter. <strong>Drag</strong> to navigate. <strong>Wheel</strong> to zoom.';
         crumbs.innerHTML = '<span class="crumb">1,000 galaxies</span><span class="crumb">100,000 systems</span><span class="crumb">1,000,000 planets</span>';
         details.innerHTML = '<p><strong>Universe level:</strong> Every visible point is a galaxy. Click one to generate its 100 solar systems.</p>';
         backButton.disabled = true;
-      } else if (state.view === 'systems') {
-        title.textContent = state.galaxy.name;
+        return;
+      }
+
+      if (state.view === 'systems') {
+        const galaxyId = state.galaxy.name;
+        const galaxyDisplayName = getDisplayNameOrLoading('galaxy', galaxyId);
+        title.textContent = galaxyDisplayName;
         instructions.innerHTML = '<strong>Click</strong> a solar system to enter. Use <strong>Back</strong> to return to galaxies.';
-        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + state.galaxy.name + '</span><span class="crumb">100 systems</span>';
+        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">100 systems</span>';
         details.innerHTML = `<p><strong>${state.galaxy.type}:</strong> This galaxy contains 100 procedural solar systems. Hover for names and click to inspect planets.</p>`;
         backButton.disabled = false;
-      } else {
-        title.textContent = state.system.name;
-        instructions.innerHTML = '<strong>Hover</strong> planets for details. Use <strong>Back</strong> to return to the galaxy.';
-        crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + state.galaxy.name + '</span><span class="crumb">' + state.system.name + '</span><span class="crumb">10 planets</span>';
-        details.innerHTML = `<p><strong>${state.system.type}:</strong> Ten planets orbit this system. Orbital paths are drawn to scale for this local map.</p>`;
-        backButton.disabled = false;
+
+        getClaimedDisplayName('galaxy', galaxyId).then(() => {
+          if (state.view === 'systems' && token === state.hudLookupToken) updateHud();
+        });
+        return;
+      }
+
+      const galaxyId = state.galaxy.name;
+      const systemId = state.system.name;
+      const galaxyDisplayName = getDisplayNameOrLoading('galaxy', galaxyId);
+      const systemDisplayName = getDisplayNameOrLoading('system', systemId);
+      title.textContent = systemDisplayName;
+      instructions.innerHTML = '<strong>Hover</strong> planets for details. Use <strong>Back</strong> to return to the galaxy.';
+      crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">' + escapeHtml(systemDisplayName) + '</span><span class="crumb">10 planets</span>';
+      details.innerHTML = `<p><strong>${state.system.type}:</strong> Ten planets orbit this system. Orbital paths are drawn to scale for this local map.</p>`;
+      backButton.disabled = false;
+
+      Promise.all([
+        getClaimedDisplayName('galaxy', galaxyId),
+        getClaimedDisplayName('system', systemId)
+      ]).then(() => {
+        if (state.view === 'planets' && token === state.hudLookupToken) updateHud();
+      });
+    }
+
+    function preloadViewNames() {
+      if (state.view === 'systems' && state.galaxy) {
+        getClaimedDisplayName('galaxy', state.galaxy.name).then(() => updateHud());
+      }
+
+      if (state.view === 'planets' && state.galaxy && state.system) {
+        getClaimedDisplayName('galaxy', state.galaxy.name).then(() => updateHud());
+        getClaimedDisplayName('system', state.system.name).then(() => updateHud());
+        for (const planet of visibleObjects) {
+          getClaimedDisplayName('planet', planet.name).then(displayName => {
+            planet.displayName = displayName;
+          });
+        }
       }
     }
 
@@ -737,7 +783,7 @@
       ctx.beginPath(); ctx.arc(center.x, center.y, Math.max(8, 18 * state.scale), 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.font = '14px Inter, sans-serif';
-      ctx.fillText(state.system.name + ' Star', center.x + 18, center.y + 4);
+      ctx.fillText(getCachedDisplayName(state.system, 'system') + ' Star', center.x + 18, center.y + 4);
     }
 
     function drawPlanet(o) {
@@ -806,9 +852,10 @@
       return `${kind}:${id}`;
     }
 
-    function getCachedDisplayName(o, kind = getCurrentObjectKind()) {
+    function getCachedDisplayName(o, kind = getCurrentObjectKind(), fallback = 'Loading...') {
       const cacheKey = getObjectCacheKey(kind, o.name);
-      return claimedNameCache.get(cacheKey) || o.displayName || o.name;
+      if (claimedNameCache.has(cacheKey)) return claimedNameCache.get(cacheKey);
+      return o.displayName || fallback;
     }
 
     async function getClaimedDisplayName(kind, id) {
@@ -866,13 +913,16 @@
       const kind = getCurrentObjectKind();
       const proceduralId = nearest.name;
       const token = ++state.hoverLookupToken;
-      const cachedName = getCachedDisplayName(nearest, kind);
+      const cacheKey = getObjectCacheKey(kind, proceduralId);
+      const cachedName = claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : null;
       const body = buildTooltipBody(nearest);
 
-      tooltip.innerHTML = `<b>${escapeHtml(cachedName)}</b><br>${body}`;
+      tooltip.innerHTML = cachedName
+        ? `<b>${escapeHtml(cachedName)}</b><br>${body}`
+        : `<b>Loading...</b><br>${body}`;
 
-      // Query Supabase only when the hovered object changes, and cache the result.
-      if (previousHover === nearest && claimedNameCache.has(getObjectCacheKey(kind, proceduralId))) return;
+      // Query Supabase only when needed, and cache the result.
+      if (previousHover === nearest && cachedName) return;
 
       const displayName = await getClaimedDisplayName(kind, proceduralId);
       if (state.hover !== nearest || token !== state.hoverLookupToken) return;
