@@ -205,6 +205,10 @@
       box-shadow: none;
     }
 
+    .search-row .wide-button {
+      flex: 1;
+    }
+
     .search-meta {
       color: var(--muted);
       font-size: 12px;
@@ -328,6 +332,14 @@
       </select>
       <button id="searchButton">Search</button>
     </div>
+    <div class="search-row">
+      <select id="randomType" aria-label="Random unclaimed type">
+        <option value="galaxy">Galaxy</option>
+        <option value="system">System</option>
+        <option value="planet">Planet</option>
+      </select>
+      <button id="randomUnclaimedButton" class="wide-button">Random unclaimed</button>
+    </div>
     <div id="searchMeta" class="search-meta">Search names, types, or address codes like G0A or S02.</div>
     <div id="searchResults" class="search-results" aria-live="polite"></div>
   </section>
@@ -346,6 +358,8 @@
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
     const searchType = document.getElementById('searchType');
+    const randomType = document.getElementById('randomType');
+    const randomUnclaimedButton = document.getElementById('randomUnclaimedButton');
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
 
@@ -1276,6 +1290,119 @@
       centerOnWorld(pos.x, pos.y, 1.25);
     }
 
+
+    function getRandomInt(maxExclusive) {
+      return Math.floor(Math.random() * maxExclusive);
+    }
+
+    function makeRandomCandidate(kind) {
+      if (kind === 'galaxy') {
+        const galaxyId = getRandomInt(galaxies.length);
+        const galaxy = galaxies[galaxyId];
+        return { kind: 'Galaxy', name: galaxy.name, detail: galaxy.type, path: `Galaxy ${uniqueCode(galaxy.id)}`, galaxyId };
+      }
+
+      const galaxyId = getRandomInt(galaxies.length);
+      const galaxy = galaxies[galaxyId];
+      const systemId = getRandomInt(100);
+      const system = makeSystem(galaxy, systemId);
+
+      if (kind === 'system') {
+        return { kind: 'System', name: system.name, detail: system.type, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId };
+      }
+
+      const planetId = getRandomInt(10);
+      const planet = makePlanet(system, planetId);
+      return { kind: 'Planet', name: planet.name, detail: `${planet.type} Planet · ${planet.moons} moons`, path: `${galaxy.name} › ${system.name} › Planet ${uniqueCode(planetId)}`, galaxyId, systemId, planetId };
+    }
+
+    function getRandomBatchSizes(kind) {
+      if (kind === 'galaxy') return [100, 250, 500, 1000];
+      if (kind === 'system') return [250, 500, 1000, 2500, 5000];
+      return [500, 1000, 2500, 5000];
+    }
+
+    function collectRandomCandidates(kind, batchSize) {
+      const byId = new Map();
+      const maxAttempts = batchSize * 4;
+      for (let attempt = 0; byId.size < batchSize && attempt < maxAttempts; attempt++) {
+        const candidate = makeRandomCandidate(kind);
+        byId.set(candidate.name, candidate);
+      }
+      return [...byId.values()];
+    }
+
+    async function findRandomUnclaimed(kind) {
+      const config = claimedNameTables[kind];
+      if (!config || !supabaseClient) throw new Error('Supabase is not available.');
+
+      for (const batchSize of getRandomBatchSizes(kind)) {
+        const candidates = collectRandomCandidates(kind, batchSize);
+        const ids = candidates.map(candidate => candidate.name);
+        const { data, error } = await supabaseClient
+          .from(config.table)
+          .select(config.idColumn)
+          .in(config.idColumn, ids);
+
+        if (error) throw error;
+
+        const claimedIds = new Set((data || []).map(row => row[config.idColumn]));
+        for (const id of ids) {
+          const cacheKey = getObjectCacheKey(kind, id);
+          if (claimedIds.has(id)) {
+            claimedStatusCache.set(cacheKey, true);
+          } else {
+            claimedNameCache.set(cacheKey, id);
+            claimedStatusCache.set(cacheKey, false);
+          }
+        }
+
+        const unclaimed = candidates.filter(candidate => !claimedIds.has(candidate.name));
+        if (unclaimed.length) return unclaimed[getRandomInt(unclaimed.length)];
+      }
+      return null;
+    }
+
+    async function goToRandomUnclaimed() {
+      const kind = randomType.value;
+      const label = randomType.options[randomType.selectedIndex].text.toLowerCase();
+      const token = Date.now() + Math.random();
+      goToRandomUnclaimed.latestToken = token;
+      randomUnclaimedButton.disabled = true;
+      randomUnclaimedButton.textContent = 'Searching…';
+      searchResults.innerHTML = '';
+      searchMeta.textContent = `Finding a random unclaimed ${label} with batched database checks…`;
+
+      try {
+        const result = await findRandomUnclaimed(kind);
+        if (goToRandomUnclaimed.latestToken !== token) return;
+        if (!result) {
+          searchMeta.textContent = `No unclaimed ${label} found in the sampled batches. Try again, or use a backend-side exhaustive search if the universe is nearly fully claimed.`;
+          return;
+        }
+
+        searchMeta.textContent = `Found random unclaimed ${label}: ${result.name}`;
+        searchResults.innerHTML = `
+          <button class="result-button" data-random-result="true">
+            <b>${escapeHtml(result.name)} ${getClaimTagHtml(false)}</b>
+            <span>${result.kind} · ${escapeHtml(result.detail)}</span>
+            <span>ID: ${escapeHtml(result.name)}</span>
+            <span>${escapeHtml(result.path)}</span>
+          </button>
+        `;
+        searchResults.querySelector('[data-random-result="true"]').addEventListener('click', () => goToSearchResult(result));
+        goToSearchResult(result);
+      } catch (error) {
+        console.warn('Random unclaimed lookup failed:', error);
+        searchMeta.textContent = `Could not find a random unclaimed ${label}. Check Supabase table permissions and try again.`;
+      } finally {
+        if (goToRandomUnclaimed.latestToken === token) {
+          randomUnclaimedButton.disabled = false;
+          randomUnclaimedButton.textContent = 'Random unclaimed';
+        }
+      }
+    }
+
     function zoomAt(clientX, clientY, factor) {
       const before = screenToWorld(clientX, clientY);
       state.scale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
@@ -1340,6 +1467,7 @@
       if (!searchInput.value.trim()) runSearch();
     });
     searchType.addEventListener('change', runSearch);
+    randomUnclaimedButton.addEventListener('click', goToRandomUnclaimed);
 
     window.addEventListener('resize', resize);
     resize();
