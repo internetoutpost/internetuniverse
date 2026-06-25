@@ -322,8 +322,9 @@
 
 
   <section class="search-panel" aria-label="Search generated universe">
+    <div class="search-meta">Search galaxies / systems / planets</div>
     <div class="search-row">
-      <input id="searchInput" type="search" placeholder="Search galaxies, systems, planets…" autocomplete="off" />
+      <input id="searchInput" type="search" placeholder="Search Parameter" autocomplete="off" />
       <select id="searchType" aria-label="Search type">
         <option value="all">All</option>
         <option value="galaxies">Galaxies</option>
@@ -332,15 +333,16 @@
       </select>
       <button id="searchButton">Search</button>
     </div>
+    <div class="search-meta">Or find a random unclaimed galaxy / system / planet.</div>
     <div class="search-row">
       <select id="randomType" aria-label="Random unclaimed type">
         <option value="galaxy">Galaxy</option>
         <option value="system">System</option>
         <option value="planet">Planet</option>
       </select>
-      <button id="randomUnclaimedButton" class="wide-button">Random unclaimed</button>
+      <button id="randomUnclaimedButton" class="wide-button">Locate Random Unclaimed</button>
     </div>
-    <div id="searchMeta" class="search-meta">Search names, types, or address codes like G0A or S02.</div>
+    <div id="searchMeta" class="search-meta"></div>
     <div id="searchResults" class="search-results" aria-live="polite"></div>
   </section>
 
@@ -1222,7 +1224,7 @@
       runSearch.latestToken = searchToken;
       searchResults.innerHTML = '';
       if (!query) {
-        searchMeta.textContent = 'Search names, types, or address codes like G0A or S02.';
+        searchMeta.textContent = '';
         return;
       }
 
@@ -1398,7 +1400,7 @@
       } finally {
         if (goToRandomUnclaimed.latestToken === token) {
           randomUnclaimedButton.disabled = false;
-          randomUnclaimedButton.textContent = 'Random unclaimed';
+          randomUnclaimedButton.textContent = 'Locate Random Unclaimed';
         }
       }
     }
