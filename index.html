@@ -465,13 +465,17 @@
       const seed = galaxyId * 3001 + systemId * 211 + 73;
       const rarity = rand(seed);
       let type = 'Main Sequence Star';
-      // Rough distribution: 70% main sequence, 13% protostar, 8% white dwarf,
-      // 5% red giant, 2% neutron star, 2% black hole.
-      if (rarity < 0.02) type = 'Black Hole';
-      else if (rarity < 0.04) type = 'Neutron Star';
-      else if (rarity < 0.09) type = 'Red Giant';
-      else if (rarity < 0.17) type = 'White Dwarf';
-      else if (rarity < 0.30) type = 'Protostar';
+      let isBinary = false;
+
+      // Rough distribution requested:
+      // 60% main sequence, 10% red giant, 10% binary system,
+      // 7% protostar, 7% white dwarf, 3% black hole, 3% neutron star.
+      if (rarity < 0.03) type = 'Black Hole';
+      else if (rarity < 0.06) type = 'Neutron Star';
+      else if (rarity < 0.13) type = 'White Dwarf';
+      else if (rarity < 0.20) type = 'Protostar';
+      else if (rarity < 0.30) type = 'Red Giant';
+      else if (rarity < 0.40) isBinary = true;
 
       let color = '#ffe08a';
       let colorLabel = '';
@@ -486,7 +490,7 @@
         colorLabel = option.label;
       }
 
-      return { type, color, colorLabel };
+      return { type, color, colorLabel, isBinary };
     }
 
     function getStarDisplayType(system) {
@@ -549,7 +553,7 @@
       const a = i * 2.39996 + rand(galaxy.id * 17) * Math.PI;
       const planets = getSystemPlanetCount(galaxy.id, i);
       const star = getStarProfile(galaxy.id, i);
-      const isBinary = planets > 0 && rand(galaxy.id * 5003 + i * 389 + 19) < 0.14;
+      const isBinary = planets > 0 && star.isBinary;
       const type = planets === 0 ? 'Rogue Star' : (isBinary ? 'Binary Star System' : 'Solar System');
       return {
         id: i,
@@ -975,7 +979,7 @@
 
       ctx.fillStyle = '#fff';
       ctx.font = '14px Inter, sans-serif';
-      const starLabel = getStarDisplayType(state.system);
+      const starLabel = getStarName(state.system);
       ctx.fillText(starLabel, center.x + 18, center.y + 4);
     }
 
