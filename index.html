@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Procedural Universe Explorer</title>
+  <title>Internet Universe</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <style>
     :root {
       --panel: rgba(9, 14, 30, 0.78);
@@ -304,8 +305,6 @@
       .search-row { flex-wrap: wrap; }
       .search-row select { flex: 1 0 120px; }
       .search-results { max-height: 20vh; }
-      .nav { top: 154px; }
-      .controls { top: 154px; left: 116px; }
     }
   </style>
 </head>
@@ -370,6 +369,9 @@
     const instructions = document.getElementById('instructions');
     const crumbs = document.getElementById('crumbs');
     const details = document.getElementById('details');
+    const hud = document.querySelector('.hud');
+    const controlsPanel = document.querySelector('.controls');
+    const navPanel = document.querySelector('.nav');
     const backButton = document.getElementById('back');
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
@@ -678,6 +680,18 @@
       return chunks;
     }
 
+
+    function positionNavigationControls() {
+      if (!hud || !controlsPanel || !navPanel) return;
+      const hudBox = hud.getBoundingClientRect();
+      const top = Math.round(hudBox.bottom + 12);
+      navPanel.style.top = top + 'px';
+      navPanel.style.left = Math.round(hudBox.left) + 'px';
+      const navBox = navPanel.getBoundingClientRect();
+      controlsPanel.style.top = top + 'px';
+      controlsPanel.style.left = Math.round(navBox.right + 10) + 'px';
+    }
+
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       state.width = window.innerWidth;
@@ -688,6 +702,7 @@
       canvas.style.height = state.height + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       resetView();
+      positionNavigationControls();
     }
 
     function worldToScreen(x, y) {
@@ -767,6 +782,7 @@
 
     function updateHud() {
       const token = ++state.hudLookupToken;
+      requestAnimationFrame(positionNavigationControls);
 
       if (state.view === 'galaxies') {
         title.textContent = 'Observable Cluster';
@@ -799,7 +815,7 @@
       instructions.innerHTML = '<strong>Hover</strong> planets for details. Use <strong>Back</strong> to return to the galaxy.';
       crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">' + escapeHtml(systemDisplayName) + '</span><span class="crumb">' + formatCount(state.system.planets, 'planet') + '</span>';
       const planetSentence = state.system.planets === 0 ? 'No planets orbit this rogue star.' : `${state.system.planets} ${state.system.planets === 1 ? 'planet orbits' : 'planets orbit'} this system.`;
-      details.innerHTML = `<p><strong>${state.system.type}:</strong> ${planetSentence} Star type: ${getStarDisplayType(state.system)}.</p>`;
+      details.innerHTML = `<p><strong>${state.system.type}:</strong> ${planetSentence}</p>`;
       backButton.disabled = false;
 
       refreshHudName('galaxy', galaxyId, 'planets', token);
@@ -1157,7 +1173,7 @@
         const system = nearest.system;
         const body = system.isBinary
           ? `Binary System<br><span style="color:#94a9d6">Two stars orbit the barycenter of ${escapeHtml(system.name)}.</span>`
-          : `${getStarDisplayType(system)}<br><span style="color:#94a9d6">Central star of ${escapeHtml(system.name)}.</span>`;
+          : `${getStarDisplayType(system)}<br><span style="color:#94a9d6">${system.starType === 'Black Hole' ? 'Centre of mass' : 'Central star'} of ${escapeHtml(system.name)}.</span>`;
         tooltip.innerHTML = `<b>${escapeHtml(nearest.name)}</b><br>${body}`;
         return;
       }
