@@ -427,7 +427,7 @@
     const palette = ['#ffe08a', '#8cf7ff', '#ff7ad9', '#b58cff', '#7db7ff', '#ffb86c', '#d7ff8c', '#ff8c8c'];
     const mainSequenceStarColors = [
       { label: 'Blue', color: '#7db7ff' },
-      { label: 'Blue-white', color: '#c8e6ff' },
+      { label: 'Blue-White', color: '#c8e6ff' },
       { label: 'White', color: '#ffffff' },
       { label: 'Yellow-white', color: '#fff6c7' },
       { label: 'Yellow', color: '#ffe08a' },
@@ -465,11 +465,13 @@
       const seed = galaxyId * 3001 + systemId * 211 + 73;
       const rarity = rand(seed);
       let type = 'Main Sequence Star';
-      if (rarity < 0.05) type = 'Black Hole';
-      else if (rarity < 0.10) type = 'Neutron Star';
-      else if (rarity < 0.18) type = 'Red Giant';
-      else if (rarity < 0.30) type = 'White Dwarf';
-      else if (rarity < 0.42) type = 'Protostar';
+      // Rough distribution: 70% main sequence, 13% protostar, 8% white dwarf,
+      // 5% red giant, 2% neutron star, 2% black hole.
+      if (rarity < 0.02) type = 'Black Hole';
+      else if (rarity < 0.04) type = 'Neutron Star';
+      else if (rarity < 0.09) type = 'Red Giant';
+      else if (rarity < 0.17) type = 'White Dwarf';
+      else if (rarity < 0.30) type = 'Protostar';
 
       let color = '#ffe08a';
       let colorLabel = '';
@@ -485,6 +487,16 @@
       }
 
       return { type, color, colorLabel };
+    }
+
+    function getStarDisplayType(system) {
+      if (system.isBinary) return 'Binary System';
+      if (system.starType === 'Main Sequence Star') return `${system.starColorLabel} Main Sequence Star`;
+      return system.starType;
+    }
+
+    function getStarName(system) {
+      return `${system.name} Star`;
     }
 
     function getGalaxyPlanetCount(galaxy) {
@@ -773,7 +785,7 @@
       instructions.innerHTML = '<strong>Hover</strong> planets for details. Use <strong>Back</strong> to return to the galaxy.';
       crumbs.innerHTML = '<span class="crumb">Cluster</span><span class="crumb">' + escapeHtml(galaxyDisplayName) + '</span><span class="crumb">' + escapeHtml(systemDisplayName) + '</span><span class="crumb">' + formatCount(state.system.planets, 'planet') + '</span>';
       const planetSentence = state.system.planets === 0 ? 'No planets orbit this rogue star.' : `${state.system.planets} ${state.system.planets === 1 ? 'planet orbits' : 'planets orbit'} this system.`;
-      details.innerHTML = `<p><strong>${state.system.type}:</strong> ${planetSentence} Star type: ${state.system.starType}${state.system.starType === 'Main Sequence Star' ? ` · ${state.system.starColorLabel}` : ''}.</p>`;
+      details.innerHTML = `<p><strong>${state.system.type}:</strong> ${planetSentence} Star type: ${getStarDisplayType(state.system)}.</p>`;
       backButton.disabled = false;
 
       refreshHudName('galaxy', galaxyId, 'planets', token);
@@ -963,7 +975,7 @@
 
       ctx.fillStyle = '#fff';
       ctx.font = '14px Inter, sans-serif';
-      const starLabel = state.system.isBinary ? 'Binary Stars' : state.system.starType;
+      const starLabel = getStarDisplayType(state.system);
       ctx.fillText(starLabel, center.x + 18, center.y + 4);
     }
 
@@ -1011,6 +1023,23 @@
       const w = screenToWorld(clientX, clientY);
       let nearest = null;
       let nearestDist = Infinity;
+
+      if (state.view === 'planets' && state.system) {
+        const starHitRadius = state.system.isBinary ? 54 : 36;
+        const starDist = Math.hypot(w.x, w.y);
+        if (starDist < starHitRadius) {
+          nearest = {
+            isStar: true,
+            name: getStarName(state.system),
+            type: getStarDisplayType(state.system),
+            system: state.system,
+            x: 0,
+            y: 0
+          };
+          nearestDist = starDist;
+        }
+      }
+
       for (const o of visibleObjects) {
         const testPos = state.view === 'planets' ? getPlanetPosition(o) : o;
         const d = Math.hypot(w.x - testPos.x, w.y - testPos.y);
@@ -1095,8 +1124,7 @@
     function buildTooltipBody(nearest) {
       if (state.view === 'galaxies') return `${nearest.type}<br><span style="color:#94a9d6">${formatCount(nearest.systems, 'solar system')} · ${formatCount(getGalaxyPlanetCount(nearest), 'planet')} · click to enter</span>`;
       if (state.view === 'systems') {
-        const colorText = nearest.starType === 'Main Sequence Star' ? ` · ${nearest.starColorLabel} main-sequence colour` : '';
-        return `${nearest.type}<br><span style="color:#94a9d6">${nearest.starType}${colorText} · ${formatCount(nearest.planets, 'planet')} · click to enter</span>`;
+        return `${nearest.type}<br><span style="color:#94a9d6">${getStarDisplayType(nearest)} · ${formatCount(nearest.planets, 'planet')} · click to enter</span>`;
       }
       return `${nearest.type} Planet<br><span style="color:#94a9d6">${nearest.moons} moons · orbit ${Math.round(nearest.orbit)} AU local units</span>`;
     }
@@ -1110,6 +1138,15 @@
       tooltip.classList.add('visible');
       tooltip.style.left = clientX + 'px';
       tooltip.style.top = clientY + 'px';
+
+      if (nearest.isStar) {
+        const system = nearest.system;
+        const body = system.isBinary
+          ? `Binary System<br><span style="color:#94a9d6">Two stars orbit the barycenter of ${escapeHtml(system.name)}.</span>`
+          : `${getStarDisplayType(system)}<br><span style="color:#94a9d6">Central star of ${escapeHtml(system.name)}.</span>`;
+        tooltip.innerHTML = `<b>${escapeHtml(nearest.name)}</b><br>${body}`;
+        return;
+      }
 
       const kind = getCurrentObjectKind();
       const proceduralId = nearest.name;
@@ -1188,7 +1225,7 @@
         const galaxy = galaxies[galaxyId];
         const system = makeSystem(galaxy, systemId);
         return system.name === id
-          ? { kind: 'System', name: id, detail: `${system.type} · ${system.starType} · ${formatCount(system.planets, 'planet')}`, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId }
+          ? { kind: 'System', name: id, detail: `${system.type} · ${getStarDisplayType(system)} · ${formatCount(system.planets, 'planet')}`, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId }
           : null;
       }
 
@@ -1274,8 +1311,8 @@
         for (let systemId = 0; systemId < galaxy.systems; systemId++) {
           const system = makeSystem(galaxy, systemId);
           const systemPath = `${galaxy.name} › System ${uniqueCode(systemId)}`;
-          if (includeSystems && objectSearchText('system solar star rogue binary protostar main sequence red giant white dwarf black hole neutron', system.name, `${system.type} ${system.starType} ${system.starColorLabel}`, systemPath).includes(q)) {
-            const result = { kind: 'System', name: system.name, detail: `${system.type} · ${system.starType} · ${formatCount(system.planets, 'planet')}`, path: systemPath, galaxyId: galaxy.id, systemId };
+          if (includeSystems && objectSearchText('system', system.name, `${system.type} ${getStarDisplayType(system)}`, systemPath).includes(q)) {
+            const result = { kind: 'System', name: system.name, detail: `${system.type} · ${getStarDisplayType(system)} · ${formatCount(system.planets, 'planet')}`, path: systemPath, galaxyId: galaxy.id, systemId };
             const key = `system:${result.name}`;
             if (!skipKeys.has(key)) results.push(result);
             if (results.length >= limit) return results;
@@ -1449,7 +1486,7 @@
       const system = makeSystem(galaxy, systemId);
 
       if (kind === 'system') {
-        return { kind: 'System', name: system.name, detail: `${system.type} · ${system.starType} · ${formatCount(system.planets, 'planet')}`, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId };
+        return { kind: 'System', name: system.name, detail: `${system.type} · ${getStarDisplayType(system)} · ${formatCount(system.planets, 'planet')}`, path: `${galaxy.name} › System ${uniqueCode(systemId)}`, galaxyId, systemId };
       }
 
       if (system.planets === 0) return makeRandomCandidate(kind);
