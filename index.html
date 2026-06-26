@@ -94,18 +94,20 @@
 
     .controls {
       position: fixed;
-      right: 18px;
-      top: 18px;
+      left: 116px;
+      top: 158px;
       display: flex;
       gap: 10px;
+      z-index: 6;
     }
 
     .nav {
       position: fixed;
-      right: 18px;
-      bottom: 18px;
+      left: 18px;
+      top: 158px;
       display: flex;
       gap: 10px;
+      z-index: 6;
     }
 
     button {
@@ -122,7 +124,11 @@
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
     }
 
-    .nav button { font-size: 14px; }
+    .nav button {
+      font-size: 14px;
+      font-weight: 800;
+      border-width: 2px;
+    }
     button:hover { border-color: rgba(134, 247, 255, 0.65); }
     button:disabled { opacity: 0.38; cursor: not-allowed; }
 
@@ -152,7 +158,7 @@
     .search-panel {
       position: fixed;
       right: 18px;
-      top: 78px;
+      top: 18px;
       width: min(430px, calc(100vw - 36px));
       max-height: calc(100vh - 170px);
       border: 1px solid var(--panel-border);
@@ -298,6 +304,8 @@
       .search-row { flex-wrap: wrap; }
       .search-row select { flex: 1 0 120px; }
       .search-results { max-height: 20vh; }
+      .nav { top: 154px; }
+      .controls { top: 154px; left: 116px; }
     }
   </style>
 </head>
@@ -500,6 +508,8 @@
     }
 
     function getStarName(system) {
+      if (system.isBinary) return `${system.name} Stars`;
+      if (system.starType === 'Black Hole') return `${system.name} Centre of Gravity`;
       return `${system.name} Star`;
     }
 
