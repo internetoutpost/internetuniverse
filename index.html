@@ -509,10 +509,19 @@
       return system.starType;
     }
 
-    function getStarName(system) {
-      if (system.isBinary) return `${system.name} Stars`;
-      if (system.starType === 'Black Hole') return `${system.name} Centre of Gravity`;
-      return `${system.name} Star`;
+    function getSystemDisplayNameForStar(system, fallback = 'Loading...') {
+      const cacheKey = getObjectCacheKey('system', system.name);
+      return claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : fallback;
+    }
+
+    function getStarNameFromBase(system, baseName) {
+      if (system.isBinary) return `${baseName} Stars`;
+      if (system.starType === 'Black Hole') return `${baseName} Centre of Gravity`;
+      return `${baseName} Star`;
+    }
+
+    function getStarName(system, fallback = 'Loading...') {
+      return getStarNameFromBase(system, getSystemDisplayNameForStar(system, fallback));
     }
 
     function getGalaxyPlanetCount(galaxy) {
@@ -1171,10 +1180,27 @@
 
       if (nearest.isStar) {
         const system = nearest.system;
-        const body = system.isBinary
-          ? `Binary System<br><span style="color:#94a9d6">Two stars orbit the barycenter of ${escapeHtml(system.name)}.</span>`
-          : `${getStarDisplayType(system)}<br><span style="color:#94a9d6">${system.starType === 'Black Hole' ? 'Centre of mass' : 'Central star'} of ${escapeHtml(system.name)}.</span>`;
-        tooltip.innerHTML = `<b>${escapeHtml(nearest.name)}</b><br>${body}`;
+        const token = ++state.hoverLookupToken;
+        const cacheKey = getObjectCacheKey('system', system.name);
+        const cachedSystemName = claimedNameCache.has(cacheKey) ? claimedNameCache.get(cacheKey) : null;
+
+        function starTooltipHtml(baseName) {
+          const starName = getStarNameFromBase(system, baseName);
+          const body = system.isBinary
+            ? `Binary System<br><span style="color:#94a9d6">Two stars orbit the barycenter of ${escapeHtml(baseName)}.</span>`
+            : `${getStarDisplayType(system)}<br><span style="color:#94a9d6">${system.starType === 'Black Hole' ? 'Centre of mass' : 'Central star'} of ${escapeHtml(baseName)}.</span>`;
+          return `<b>${escapeHtml(starName)}</b><br>${body}`;
+        }
+
+        tooltip.innerHTML = cachedSystemName
+          ? starTooltipHtml(cachedSystemName)
+          : `<b>Loading...</b><br>${system.isBinary ? 'Binary System' : getStarDisplayType(system)}`;
+
+        if (cachedSystemName) return;
+
+        const info = await getClaimedInfo('system', system.name);
+        if (state.hover !== nearest || token !== state.hoverLookupToken) return;
+        tooltip.innerHTML = starTooltipHtml(info.displayName);
         return;
       }
 
