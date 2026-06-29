@@ -161,7 +161,7 @@
       right: 18px;
       top: 18px;
       width: min(430px, calc(100vw - 36px));
-      max-height: calc(100vh - 170px);
+      max-height: calc(50vh - 27px);
       border: 1px solid var(--panel-border);
       border-radius: 20px;
       background: var(--panel);
@@ -224,7 +224,8 @@
 
     .search-results {
       overflow: auto;
-      max-height: calc(100vh - 285px);
+      flex: 1;
+      min-height: 0;
       padding-right: 2px;
     }
 
@@ -285,6 +286,195 @@
       border: 1px solid rgba(148, 169, 214, 0.22);
     }
 
+
+
+    .purchase-panel {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: min(430px, calc(100vw - 36px));
+      max-height: calc(50vh - 27px);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 4;
+    }
+
+    .purchase-panel h2 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: 0.01em;
+    }
+
+    .purchase-description {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .price-list {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 5px 18px;
+      align-self: center;
+      min-width: 210px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .price-list span:nth-child(even) {
+      color: var(--accent);
+      text-align: right;
+      font-weight: 700;
+    }
+
+    .purchase-label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+      margin-top: 2px;
+    }
+
+    .purchase-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .purchase-row input {
+      height: 42px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(2, 5, 14, 0.58);
+      color: var(--text);
+      padding: 0 12px;
+      font: inherit;
+      outline: none;
+      min-width: 0;
+    }
+
+    .purchase-row input:first-child { flex: 1.25; }
+    .purchase-row input:nth-child(2) { flex: 1; }
+
+    .purchase-row input:focus {
+      border-color: rgba(134, 247, 255, 0.7);
+      box-shadow: 0 0 0 3px rgba(134, 247, 255, 0.08);
+    }
+
+    .purchase-row button {
+      min-width: 92px;
+      height: 42px;
+      font-size: 13px;
+      box-shadow: none;
+      white-space: nowrap;
+    }
+
+    .purchase-message {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .purchase-message.error { color: #ff9aa8; }
+    .purchase-message.success { color: var(--accent); }
+
+    .cart-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 2px;
+    }
+
+    .cart-title-row h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .cart-total {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .cart-items {
+      overflow: auto;
+      flex: 1;
+      min-height: 48px;
+      padding-right: 2px;
+    }
+
+    .cart-empty {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 8px 0;
+    }
+
+    .cart-item {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr auto auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 10px;
+      margin-bottom: 8px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(2, 5, 14, 0.42);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .cart-item strong {
+      color: var(--accent);
+      display: block;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .cart-item span {
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+
+    .cart-price {
+      color: var(--accent);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .cart-timer {
+      color: #ffe08a;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .cart-remove {
+      min-width: 30px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 10px;
+      font-size: 16px;
+      box-shadow: none;
+      line-height: 1;
+    }
+
+    .checkout-button {
+      width: 100%;
+      height: 42px;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: none;
+    }
+
     mark {
       color: #ffffff;
       background: rgba(134, 247, 255, 0.22);
@@ -296,15 +486,26 @@
       .search-panel {
         left: 18px;
         right: 18px;
-        top: auto;
-        bottom: 78px;
+        top: 18px;
+        bottom: auto;
         width: auto;
-        max-height: 36vh;
+        max-height: 34vh;
       }
 
-      .search-row { flex-wrap: wrap; }
+      .purchase-panel {
+        left: 18px;
+        right: 18px;
+        bottom: 18px;
+        width: auto;
+        max-height: 34vh;
+      }
+
+      .search-row, .purchase-row { flex-wrap: wrap; }
       .search-row select { flex: 1 0 120px; }
-      .search-results { max-height: 20vh; }
+      .purchase-row input { flex: 1 0 100% !important; }
+      .purchase-row button { flex: 1 0 100%; }
+      .cart-item { grid-template-columns: 1fr; }
+      .cart-remove { justify-self: start; }
     }
   </style>
 </head>
@@ -359,6 +560,30 @@
     <div id="searchResults" class="search-results" aria-live="polite"></div>
   </section>
 
+
+  <section class="purchase-panel" aria-label="Purchase celestial object">
+    <h2>Rename a celestial object</h2>
+    <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
+    <div class="price-list" aria-label="Price list">
+      <span>Galaxy</span><span>$100</span>
+      <span>System + Star</span><span>$10</span>
+      <span>Planet</span><span>$2</span>
+    </div>
+    <div class="purchase-label">Celestial ID</div>
+    <div class="purchase-row">
+      <input id="purchaseObjectId" type="text" value="Caldera Galaxy G-36" aria-label="Celestial ID" />
+      <input id="purchaseDesiredName" type="text" value="Object's New Name" aria-label="Object's new name" />
+      <button id="addToCartButton">Add to cart</button>
+    </div>
+    <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
+    <div class="cart-title-row">
+      <h3>Cart</h3>
+      <div id="cartTotal" class="cart-total">$0</div>
+    </div>
+    <div id="cartItems" class="cart-items" aria-live="polite"></div>
+    <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
+  </section>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
@@ -380,9 +605,19 @@
     const randomUnclaimedButton = document.getElementById('randomUnclaimedButton');
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
+    const purchaseObjectId = document.getElementById('purchaseObjectId');
+    const purchaseDesiredName = document.getElementById('purchaseDesiredName');
+    const addToCartButton = document.getElementById('addToCartButton');
+    const purchaseMessage = document.getElementById('purchaseMessage');
+    const cartItems = document.getElementById('cartItems');
+    const cartTotal = document.getElementById('cartTotal');
+    const checkoutButton = document.getElementById('checkoutButton');
 
     const SUPABASE_URL = 'https://dpmdptudldphkfovlali.supabase.co';
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
+    const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
+    const cartState = { items: [], loading: false };
+    const cartPrices = { galaxy: 100, system: 10, planet: 2 };
     const supabaseClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
       : null;
@@ -1638,6 +1873,149 @@
       }
     }
 
+
+    function getCartPrice(objectType) {
+      return cartPrices[String(objectType || '').toLowerCase()] || 0;
+    }
+
+    function formatMoney(value) {
+      return `$${Number(value || 0).toLocaleString()}`;
+    }
+
+    function formatRemaining(expires) {
+      const ms = new Date(expires).getTime() - Date.now();
+      if (!Number.isFinite(ms) || ms <= 0) return '0:00';
+      const totalSeconds = Math.ceil(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function setPurchaseMessage(message, type = '') {
+      purchaseMessage.textContent = message || '';
+      purchaseMessage.className = `purchase-message ${type}`.trim();
+    }
+
+    async function reserveObjectRequest(method, body) {
+      const options = {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          'apikey': SUPABASE_PUBLISHABLE_KEY
+        }
+      };
+      if (body) options.body = JSON.stringify(body);
+
+      const response = await fetch(RESERVE_OBJECT_FUNCTION_URL, options);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Could not update cart. Please try again.');
+      }
+      return payload;
+    }
+
+    function normalizeCartItem(item) {
+      return {
+        objectID: item.objectID,
+        objectType: String(item.objectType || '').toLowerCase(),
+        desiredName: item.desiredName,
+        issued: item.issued,
+        expires: item.expires,
+        price: Number(item.price ?? getCartPrice(item.objectType))
+      };
+    }
+
+    function renderCart() {
+      const now = Date.now();
+      cartState.items = cartState.items
+        .map(normalizeCartItem)
+        .filter(item => new Date(item.expires).getTime() > now);
+
+      const total = cartState.items.reduce((sum, item) => sum + getCartPrice(item.objectType), 0);
+      cartTotal.textContent = formatMoney(total);
+      checkoutButton.disabled = cartState.items.length === 0;
+
+      if (!cartState.items.length) {
+        cartItems.innerHTML = '<div class="cart-empty">Your cart is empty. Add a valid celestial ID to reserve it for 15 minutes.</div>';
+        return;
+      }
+
+      cartItems.innerHTML = cartState.items.map(item => `
+        <div class="cart-item">
+          <span><strong>Celestial ID:</strong>${escapeHtml(item.objectID)}</span>
+          <span><strong>Renamed To:</strong>${escapeHtml(item.desiredName)}</span>
+          <span class="cart-price">${formatMoney(getCartPrice(item.objectType))}</span>
+          <span class="cart-timer">${formatRemaining(item.expires)}</span>
+          <button class="cart-remove" data-object-id="${escapeHtml(item.objectID)}" aria-label="Remove ${escapeHtml(item.objectID)} from cart">×</button>
+        </div>
+      `).join('');
+
+      cartItems.querySelectorAll('.cart-remove').forEach(button => {
+        button.addEventListener('click', () => removeFromCart(button.dataset.objectId));
+      });
+    }
+
+    async function loadCart() {
+      try {
+        const payload = await reserveObjectRequest('GET');
+        cartState.items = (payload.items || []).map(normalizeCartItem);
+        renderCart();
+      } catch (error) {
+        console.warn('Cart load failed:', error);
+        renderCart();
+      }
+    }
+
+    async function addToCart() {
+      const objectID = purchaseObjectId.value.trim();
+      const desiredName = purchaseDesiredName.value.trim();
+
+      addToCartButton.disabled = true;
+      addToCartButton.textContent = 'Adding…';
+      setPurchaseMessage('Checking availability…');
+
+      try {
+        const payload = await reserveObjectRequest('POST', { objectID, desiredName });
+        if (payload.item) {
+          const added = normalizeCartItem(payload.item);
+          cartState.items = cartState.items.filter(item => item.objectID !== added.objectID);
+          cartState.items.push(added);
+          renderCart();
+        } else {
+          await loadCart();
+        }
+        setPurchaseMessage('Reserved for 15 minutes.', 'success');
+      } catch (error) {
+        setPurchaseMessage(error.message, 'error');
+      } finally {
+        addToCartButton.disabled = false;
+        addToCartButton.textContent = 'Add to cart';
+      }
+    }
+
+    async function removeFromCart(objectID) {
+      if (!objectID) return;
+      const previous = [...cartState.items];
+      cartState.items = cartState.items.filter(item => item.objectID !== objectID);
+      renderCart();
+
+      try {
+        await reserveObjectRequest('DELETE', { objectID });
+        setPurchaseMessage('Removed from cart.', 'success');
+      } catch (error) {
+        cartState.items = previous;
+        renderCart();
+        setPurchaseMessage(error.message, 'error');
+      }
+    }
+
+    function dummyCheckout() {
+      if (!cartState.items.length) return;
+      setPurchaseMessage('Checkout is not enabled yet. Stripe will be connected later.', 'success');
+    }
+
     function zoomAt(clientX, clientY, factor) {
       const before = screenToWorld(clientX, clientY);
       state.scale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
@@ -1703,8 +2081,14 @@
     });
     searchType.addEventListener('change', runSearch);
     randomUnclaimedButton.addEventListener('click', goToRandomUnclaimed);
+    addToCartButton.addEventListener('click', addToCart);
+    purchaseObjectId.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
+    purchaseDesiredName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
+    checkoutButton.addEventListener('click', dummyCheckout);
+    setInterval(renderCart, 1000);
 
     window.addEventListener('resize', resize);
+    loadCart();
     resize();
     updateHud();
     draw();
