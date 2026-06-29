@@ -292,8 +292,8 @@
       position: fixed;
       right: 18px;
       bottom: 18px;
-      width: min(430px, calc(100vw - 36px));
-      max-height: calc(50vh - 27px);
+      width: min(620px, calc(100vw - 36px));
+      max-height: calc(42vh - 18px);
       border: 1px solid var(--panel-border);
       border-radius: 20px;
       background: var(--panel);
@@ -304,6 +304,59 @@
       flex-direction: column;
       gap: 10px;
       z-index: 4;
+      overflow: hidden;
+    }
+
+    .purchase-collapsible {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .purchase-header {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .purchase-minimize {
+      position: relative;
+      min-width: 28px;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 9px;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .purchase-minimize:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 0;
+      top: calc(100% + 7px);
+      z-index: 10;
+      padding: 5px 8px;
+      border: 1px solid var(--panel-border);
+      border-radius: 9px;
+      background: rgba(5, 9, 22, 0.94);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+    }
+
+    .purchase-panel.minimized {
+      max-height: none;
+    }
+
+    .purchase-panel.minimized .purchase-collapsible {
+      display: none;
     }
 
     .purchase-panel h2 {
@@ -335,6 +388,20 @@
       font-weight: 700;
     }
 
+    .purchase-field-labels {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.35fr) minmax(180px, 1fr) 112px;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+      margin-top: 2px;
+    }
+
+    .purchase-field-labels span:last-child {
+      visibility: hidden;
+    }
+
     .purchase-label {
       color: var(--muted);
       font-size: 12px;
@@ -359,8 +426,13 @@
       min-width: 0;
     }
 
-    .purchase-row input:first-child { flex: 1.25; }
-    .purchase-row input:nth-child(2) { flex: 1; }
+    .purchase-row input:first-child { flex: 1.35 1 240px; }
+    .purchase-row input:nth-child(2) { flex: 1 1 180px; }
+
+    .purchase-row input::placeholder {
+      color: rgba(214, 222, 239, 0.58);
+      opacity: 1;
+    }
 
     .purchase-row input:focus {
       border-color: rgba(134, 247, 255, 0.7);
@@ -368,7 +440,7 @@
     }
 
     .purchase-row button {
-      min-width: 92px;
+      min-width: 112px;
       height: 42px;
       font-size: 13px;
       box-shadow: none;
@@ -502,6 +574,8 @@
 
       .search-row, .purchase-row { flex-wrap: wrap; }
       .search-row select { flex: 1 0 120px; }
+      .purchase-field-labels { grid-template-columns: 1fr; }
+      .purchase-field-labels span:last-child { display: none; }
       .purchase-row input { flex: 1 0 100% !important; }
       .purchase-row button { flex: 1 0 100%; }
       .cart-item { grid-template-columns: 1fr; }
@@ -562,26 +636,35 @@
 
 
   <section class="purchase-panel" aria-label="Purchase celestial object">
-    <h2>Rename a celestial object</h2>
-    <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
-    <div class="price-list" aria-label="Price list">
-      <span>Galaxy</span><span>$100</span>
-      <span>System + Star</span><span>$10</span>
-      <span>Planet</span><span>$2</span>
+    <div class="purchase-header">
+      <button id="purchaseMinimize" class="purchase-minimize" type="button" aria-label="Minimise purchase panel" title="Minimise" data-tooltip="Minimise">−</button>
+      <h2>Rename a celestial object</h2>
     </div>
-    <div class="purchase-label">Celestial ID</div>
-    <div class="purchase-row">
-      <input id="purchaseObjectId" type="text" value="Caldera Galaxy G-36" aria-label="Celestial ID" />
-      <input id="purchaseDesiredName" type="text" value="Object's New Name" aria-label="Object's new name" />
-      <button id="addToCartButton">Add to cart</button>
+    <div class="purchase-collapsible">
+      <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
+      <div class="price-list" aria-label="Price list">
+        <span>Galaxy</span><span>$100</span>
+        <span>System + Star</span><span>$10</span>
+        <span>Planet</span><span>$2</span>
+      </div>
+      <div class="purchase-field-labels" aria-hidden="true">
+        <span>Celestial ID</span>
+        <span>New Name</span>
+        <span>Add</span>
+      </div>
+      <div class="purchase-row">
+        <input id="purchaseObjectId" type="text" placeholder="Kepler Galaxy G-FD" aria-label="Celestial ID" />
+        <input id="purchaseDesiredName" type="text" placeholder="My Galaxy" aria-label="New name" />
+        <button id="addToCartButton">Add to cart</button>
+      </div>
+      <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
+      <div class="cart-title-row">
+        <h3>Cart</h3>
+        <div id="cartTotal" class="cart-total">$0</div>
+      </div>
+      <div id="cartItems" class="cart-items" aria-live="polite"></div>
+      <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
     </div>
-    <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
-    <div class="cart-title-row">
-      <h3>Cart</h3>
-      <div id="cartTotal" class="cart-total">$0</div>
-    </div>
-    <div id="cartItems" class="cart-items" aria-live="polite"></div>
-    <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -612,6 +695,8 @@
     const cartItems = document.getElementById('cartItems');
     const cartTotal = document.getElementById('cartTotal');
     const checkoutButton = document.getElementById('checkoutButton');
+    const purchasePanel = document.querySelector('.purchase-panel');
+    const purchaseMinimize = document.getElementById('purchaseMinimize');
 
     const SUPABASE_URL = 'https://dpmdptudldphkfovlali.supabase.co';
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
@@ -2016,6 +2101,14 @@
       setPurchaseMessage('Checkout is not enabled yet. Stripe will be connected later.', 'success');
     }
 
+    function togglePurchasePanel() {
+      const minimized = purchasePanel.classList.toggle('minimized');
+      purchaseMinimize.textContent = minimized ? '+' : '−';
+      purchaseMinimize.setAttribute('aria-label', minimized ? 'Expand purchase panel' : 'Minimise purchase panel');
+      purchaseMinimize.setAttribute('title', minimized ? 'Expand' : 'Minimise');
+      purchaseMinimize.dataset.tooltip = minimized ? 'Expand' : 'Minimise';
+    }
+
     function zoomAt(clientX, clientY, factor) {
       const before = screenToWorld(clientX, clientY);
       state.scale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
@@ -2085,6 +2178,7 @@
     purchaseObjectId.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
     purchaseDesiredName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
     checkoutButton.addEventListener('click', dummyCheckout);
+    purchaseMinimize.addEventListener('click', togglePurchasePanel);
     setInterval(renderCart, 1000);
 
     window.addEventListener('resize', resize);
