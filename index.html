@@ -2025,7 +2025,7 @@
         .filter(item => new Date(item.expires).getTime() > now);
 
       const total = cartState.items.reduce((sum, item) => sum + getCartPrice(item.objectType), 0);
-      cartTotal.textContent = `${formatMoney(total)} · ${cartState.items.length}/${CART_ITEM_LIMIT}`;
+      cartTotal.textContent = formatMoney(total);
       checkoutButton.disabled = cartState.items.length === 0;
       addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
       if (cartState.items.length >= CART_ITEM_LIMIT) addToCartButton.title = `Cart limit: ${CART_ITEM_LIMIT} objects`;
@@ -2067,9 +2067,9 @@
       const desiredName = purchaseDesiredName.value.trim();
 
       if (cartState.items.length >= CART_ITEM_LIMIT) {
-        setPurchaseMessage(`Cart limit reached. You can reserve up to ${CART_ITEM_LIMIT} objects at once.`, 'error');
-        return;
-      }
+  setPurchaseMessage('You can only have 10 items in your cart at once.', 'error');
+  return;
+}
 
       if (desiredName.length < MIN_NAME_LENGTH || desiredName.length > MAX_NAME_LENGTH) {
         setPurchaseMessage(`Enter a name between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`, 'error');
