@@ -293,7 +293,7 @@
       right: 18px;
       bottom: 18px;
       width: min(620px, calc(100vw - 36px));
-      max-height: calc(42vh - 18px);
+      max-height: calc(40vh - 18px);
       border: 1px solid var(--panel-border);
       border-radius: 20px;
       background: var(--panel);
@@ -304,7 +304,8 @@
       flex-direction: column;
       gap: 10px;
       z-index: 4;
-      overflow: hidden;
+      overflow: auto;
+      scrollbar-gutter: stable;
     }
 
     .purchase-collapsible {
@@ -339,7 +340,7 @@
       position: absolute;
       left: 0;
       top: calc(100% + 7px);
-      z-index: 10;
+      z-index: 9999;
       padding: 5px 8px;
       border: 1px solid var(--panel-border);
       border-radius: 9px;
@@ -353,6 +354,7 @@
 
     .purchase-panel.minimized {
       max-height: none;
+      overflow: visible;
     }
 
     .purchase-panel.minimized .purchase-collapsible {
@@ -477,8 +479,8 @@
     }
 
     .cart-items {
-      overflow: auto;
-      flex: 1;
+      overflow: visible;
+      flex: 0 0 auto;
       min-height: 48px;
       padding-right: 2px;
     }
@@ -570,6 +572,7 @@
         bottom: 18px;
         width: auto;
         max-height: 34vh;
+        overflow: auto;
       }
 
       .search-row, .purchase-row { flex-wrap: wrap; }
@@ -654,7 +657,7 @@
       </div>
       <div class="purchase-row">
         <input id="purchaseObjectId" type="text" placeholder="Kepler Galaxy G-FD" aria-label="Celestial ID" />
-        <input id="purchaseDesiredName" type="text" placeholder="My Galaxy" aria-label="New name" />
+        <input id="purchaseDesiredName" type="text" placeholder="My Galaxy" aria-label="New name" minlength="1" maxlength="60" />
         <button id="addToCartButton">Add to cart</button>
       </div>
       <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
@@ -702,6 +705,9 @@
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
     const cartState = { items: [], loading: false };
+    const CART_ITEM_LIMIT = 10;
+    const MIN_NAME_LENGTH = 1;
+    const MAX_NAME_LENGTH = 60;
     const cartPrices = { galaxy: 100, system: 10, planet: 2 };
     const supabaseClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
@@ -2019,8 +2025,11 @@
         .filter(item => new Date(item.expires).getTime() > now);
 
       const total = cartState.items.reduce((sum, item) => sum + getCartPrice(item.objectType), 0);
-      cartTotal.textContent = formatMoney(total);
+      cartTotal.textContent = `${formatMoney(total)} · ${cartState.items.length}/${CART_ITEM_LIMIT}`;
       checkoutButton.disabled = cartState.items.length === 0;
+      addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+      if (cartState.items.length >= CART_ITEM_LIMIT) addToCartButton.title = `Cart limit: ${CART_ITEM_LIMIT} objects`;
+      else addToCartButton.removeAttribute('title');
 
       if (!cartState.items.length) {
         cartItems.innerHTML = '<div class="cart-empty">Your cart is empty. Add a valid celestial ID to reserve it for 15 minutes.</div>';
@@ -2057,6 +2066,16 @@
       const objectID = purchaseObjectId.value.trim();
       const desiredName = purchaseDesiredName.value.trim();
 
+      if (cartState.items.length >= CART_ITEM_LIMIT) {
+        setPurchaseMessage(`Cart limit reached. You can reserve up to ${CART_ITEM_LIMIT} objects at once.`, 'error');
+        return;
+      }
+
+      if (desiredName.length < MIN_NAME_LENGTH || desiredName.length > MAX_NAME_LENGTH) {
+        setPurchaseMessage(`Enter a name between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`, 'error');
+        return;
+      }
+
       addToCartButton.disabled = true;
       addToCartButton.textContent = 'Adding…';
       setPurchaseMessage('Checking availability…');
@@ -2075,7 +2094,7 @@
       } catch (error) {
         setPurchaseMessage(error.message, 'error');
       } finally {
-        addToCartButton.disabled = false;
+        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
         addToCartButton.textContent = 'Add to cart';
       }
     }
