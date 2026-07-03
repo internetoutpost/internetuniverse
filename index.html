@@ -704,6 +704,7 @@
     const SUPABASE_URL = 'https://dpmdptudldphkfovlali.supabase.co';
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
+    const CREATE_CHECKOUT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout`;
     const cartState = { items: [], loading: false };
     const CART_ITEM_LIMIT = 10;
     const MIN_NAME_LENGTH = 1;
@@ -2115,9 +2116,58 @@
       }
     }
 
-    function dummyCheckout() {
-      if (!cartState.items.length) return;
-      setPurchaseMessage('Checkout is not enabled yet. Stripe will be connected later.', 'success');
+    async function startCheckout() {
+      if (!cartState.items.length || checkoutButton.disabled) return;
+
+      checkoutButton.disabled = true;
+      checkoutButton.textContent = 'Opening Stripe…';
+      setPurchaseMessage('Preparing secure checkout…');
+
+      try {
+        const response = await fetch(CREATE_CHECKOUT_FUNCTION_URL, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY
+          }
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || 'Could not start checkout. Please try again.');
+        }
+
+        if (!payload.url) {
+          throw new Error('Checkout URL was not returned. Please try again.');
+        }
+
+        window.location.href = payload.url;
+      } catch (error) {
+        setPurchaseMessage(error.message, 'error');
+        checkoutButton.disabled = cartState.items.length === 0;
+        checkoutButton.textContent = 'Checkout';
+      }
+    }
+
+    function handleCheckoutReturnMessage() {
+      const params = new URLSearchParams(window.location.search);
+      const checkoutStatus = params.get('checkout');
+      if (!checkoutStatus) return;
+
+      if (checkoutStatus === 'success') {
+        setPurchaseMessage('Payment received. Your rename will appear once confirmation is complete.', 'success');
+        loadCart();
+      } else if (checkoutStatus === 'cancelled') {
+        setPurchaseMessage('Checkout was cancelled. Your unexpired reservations are still in your cart.', 'error');
+      }
+
+      params.delete('checkout');
+      params.delete('session_id');
+      const cleanQuery = params.toString();
+      const cleanUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '') + window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
     }
 
     function togglePurchasePanel() {
@@ -2196,11 +2246,12 @@
     addToCartButton.addEventListener('click', addToCart);
     purchaseObjectId.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
     purchaseDesiredName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
-    checkoutButton.addEventListener('click', dummyCheckout);
+    checkoutButton.addEventListener('click', startCheckout);
     purchaseMinimize.addEventListener('click', togglePurchasePanel);
     setInterval(renderCart, 1000);
 
     window.addEventListener('resize', resize);
+    handleCheckoutReturnMessage();
     loadCart();
     resize();
     updateHud();
