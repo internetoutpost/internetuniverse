@@ -731,17 +731,49 @@
 
 
   <div id="checkoutModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="checkoutModalTitle">
-    <div class="modal-card">
-      <h2 id="checkoutModalTitle">Confirm checkout</h2>
-      <p id="checkoutModalBody">After completing payment, your celestial object(s) will be automatically renamed shortly.</p>
-      <p id="checkoutModalNote">You will be redirected to Stripe to complete your secure payment.</p>
-      <div class="modal-actions">
-        <button id="checkoutModalCancel" class="secondary-button" type="button">Cancel</button>
-        <button id="checkoutModalProceed" type="button">Proceed to checkout</button>
-        <button id="checkoutModalClose" type="button" style="display:none;">Close</button>
-      </div>
+  <div class="modal-card">
+    <h2 id="checkoutModalTitle">Confirm checkout</h2>
+
+    <p id="checkoutModalBody">
+      You are purchasing the right to rename the selected unclaimed celestial object within
+      <strong>Internet Universe</strong>, a fictional procedurally generated virtual universe.
+    </p>
+
+    <p>
+      Your purchase applies <strong>only</strong> to the selected celestial object and does
+      not include any child objects. For example, purchasing a galaxy renames only that
+      galaxy and does not rename any systems, stars or planets contained within it.
+    </p>
+
+    <p id="checkoutModalNote">
+      After completing your secure payment through Stripe, your rename will be applied
+      automatically. You will then be redirected back to Internet Universe. Please allow a
+      few minutes for your purchase to appear throughout the site.
+    </p>
+
+    <p style="font-size:12px;color:var(--muted);margin-top:18px;">
+      By clicking <strong>Proceed to checkout</strong>, you confirm that you have read and
+      agree to the
+      <a href="#" target="_blank" style="color:var(--accent);">
+        Terms &amp; Conditions
+      </a>.
+    </p>
+
+    <div class="modal-actions">
+      <button id="checkoutModalCancel" class="secondary-button" type="button">
+        Cancel
+      </button>
+
+      <button id="checkoutModalProceed" type="button">
+        Proceed to checkout
+      </button>
+
+      <button id="checkoutModalClose" type="button" style="display:none;">
+        Close
+      </button>
     </div>
   </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
