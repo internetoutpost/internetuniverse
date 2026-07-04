@@ -177,7 +177,7 @@ Internet Universe uses cookies and similar technologies necessary for operation 
 
 Payments are processed by Stripe.
 
-Please refer to our Privacy Policy for further information.
+We use Stripe for identity document verification. Stripe retains a copy of all the data provided as part of a verification. You may also have consented to allow Stripe to use your data to improve their technology. You can delete your information from Stripe’s servers or revoke your consent by contacting us using the form at Stripe support: https://support.stripe.com.
 
 15. Contact
 
