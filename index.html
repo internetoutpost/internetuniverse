@@ -132,6 +132,7 @@
     }
     button:hover { border-color: rgba(134, 247, 255, 0.65); }
     button:disabled { opacity: 0.38; cursor: not-allowed; }
+    button.cooldown { opacity: 0.52; cursor: wait; }
 
     .tooltip {
       position: fixed;
@@ -789,6 +790,52 @@
     const MIN_NAME_LENGTH = 1;
     const MAX_NAME_LENGTH = 60;
     const cartPrices = { galaxy: 100, system: 10, planet: 2 };
+
+    const FRONTEND_COOLDOWNS = {
+      search: 900,
+      randomUnclaimed: 3000,
+      addToCart: 1800,
+      removeFromCart: 900,
+      checkout: 5000
+    };
+
+    const frontendCooldownStartedAt = new Map();
+
+    function getCooldownRemainingMs(action) {
+      const startedAt = frontendCooldownStartedAt.get(action) || 0;
+      const duration = FRONTEND_COOLDOWNS[action] || 0;
+      return Math.max(0, startedAt + duration - Date.now());
+    }
+
+    function isFrontendCooldownActive(action) {
+      return getCooldownRemainingMs(action) > 0;
+    }
+
+    function getCooldownRemainingSeconds(action) {
+      return Math.max(1, Math.ceil(getCooldownRemainingMs(action) / 1000));
+    }
+
+    function startFrontendCooldown(action) {
+      frontendCooldownStartedAt.set(action, Date.now());
+    }
+
+    function holdButtonForCooldown(button, action, restoreText, restoreCallback) {
+      const remaining = getCooldownRemainingMs(action);
+      if (!button || remaining <= 0) {
+        if (restoreCallback) restoreCallback();
+        return;
+      }
+
+      button.disabled = true;
+      button.classList.add('cooldown');
+      if (restoreText) button.textContent = restoreText;
+
+      window.setTimeout(() => {
+        button.classList.remove('cooldown');
+        if (restoreCallback) restoreCallback();
+        else button.disabled = false;
+      }, remaining);
+    }
     const supabaseClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
       : null;
@@ -1855,6 +1902,19 @@
     }
 
     async function runSearch() {
+      if (isFrontendCooldownActive('search')) {
+        searchMeta.textContent = `Please wait ${getCooldownRemainingSeconds('search')} second${getCooldownRemainingSeconds('search') === 1 ? '' : 's'} before searching again.`;
+        return;
+      }
+
+      startFrontendCooldown('search');
+      searchButton.disabled = true;
+      searchButton.classList.add('cooldown');
+      holdButtonForCooldown(searchButton, 'search', 'Search', () => {
+        searchButton.disabled = false;
+        searchButton.textContent = 'Search';
+      });
+
       const query = searchInput.value.trim();
       const typeFilter = searchType.value;
       const typeLabel = searchType.options[searchType.selectedIndex].text.toLowerCase();
@@ -2005,6 +2065,13 @@
     }
 
     async function goToRandomUnclaimed() {
+      if (isFrontendCooldownActive('randomUnclaimed')) {
+        searchMeta.textContent = `Please wait ${getCooldownRemainingSeconds('randomUnclaimed')} second${getCooldownRemainingSeconds('randomUnclaimed') === 1 ? '' : 's'} before locating another random unclaimed object.`;
+        return;
+      }
+
+      startFrontendCooldown('randomUnclaimed');
+
       const kind = randomType.value;
       const label = randomType.options[randomType.selectedIndex].text.toLowerCase();
       const token = Date.now() + Math.random();
@@ -2038,8 +2105,10 @@
         searchMeta.textContent = `Could not find a random unclaimed ${label}. Check Supabase table permissions and try again.`;
       } finally {
         if (goToRandomUnclaimed.latestToken === token) {
-          randomUnclaimedButton.disabled = false;
-          randomUnclaimedButton.textContent = 'Locate Random Unclaimed';
+          holdButtonForCooldown(randomUnclaimedButton, 'randomUnclaimed', 'Locate Random Unclaimed', () => {
+            randomUnclaimedButton.disabled = false;
+            randomUnclaimedButton.textContent = 'Locate Random Unclaimed';
+          });
         }
       }
     }
@@ -2143,13 +2212,20 @@
     }
 
     async function addToCart() {
+      if (isFrontendCooldownActive('addToCart')) {
+        setPurchaseMessage(`Please wait ${getCooldownRemainingSeconds('addToCart')} second${getCooldownRemainingSeconds('addToCart') === 1 ? '' : 's'} before adding another item.`, 'error');
+        return;
+      }
+
+      startFrontendCooldown('addToCart');
+
       const objectID = purchaseObjectId.value.trim();
       const desiredName = purchaseDesiredName.value.trim();
 
       if (cartState.items.length >= CART_ITEM_LIMIT) {
-  setPurchaseMessage('You can only have 10 items in your cart at once.', 'error');
-  return;
-}
+        setPurchaseMessage('You can only have 10 items in your cart at once.', 'error');
+        return;
+      }
 
       if (desiredName.length < MIN_NAME_LENGTH || desiredName.length > MAX_NAME_LENGTH) {
         setPurchaseMessage(`Enter a name between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`, 'error');
@@ -2174,13 +2250,24 @@
       } catch (error) {
         setPurchaseMessage(error.message, 'error');
       } finally {
-        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
         addToCartButton.textContent = 'Add to cart';
+        holdButtonForCooldown(addToCartButton, 'addToCart', 'Add to cart', () => {
+          addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+          addToCartButton.textContent = 'Add to cart';
+        });
       }
     }
 
     async function removeFromCart(objectID) {
       if (!objectID) return;
+      const cooldownKey = `removeFromCart:${objectID}`;
+      if (isFrontendCooldownActive(cooldownKey)) {
+        setPurchaseMessage('Please wait before removing that item again.', 'error');
+        return;
+      }
+      frontendCooldownStartedAt.set(cooldownKey, Date.now());
+      FRONTEND_COOLDOWNS[cooldownKey] = FRONTEND_COOLDOWNS.removeFromCart;
+
       const previous = [...cartState.items];
       cartState.items = cartState.items.filter(item => item.objectID !== objectID);
       renderCart();
@@ -2197,6 +2284,10 @@
 
     function openCheckoutConfirmModal() {
       if (!cartState.items.length || checkoutButton.disabled) return;
+      if (isFrontendCooldownActive('checkout')) {
+        setPurchaseMessage(`Please wait ${getCooldownRemainingSeconds('checkout')} second${getCooldownRemainingSeconds('checkout') === 1 ? '' : 's'} before trying checkout again.`, 'error');
+        return;
+      }
 
       checkoutModalTitle.textContent = 'Confirm checkout';
       checkoutModalBody.textContent = 'After completing payment, your celestial object(s) will be automatically renamed shortly.';
@@ -2225,6 +2316,12 @@
 
     async function startCheckout() {
       if (!cartState.items.length || checkoutModalProceed.disabled) return;
+      if (isFrontendCooldownActive('checkout')) {
+        setPurchaseMessage(`Please wait ${getCooldownRemainingSeconds('checkout')} second${getCooldownRemainingSeconds('checkout') === 1 ? '' : 's'} before trying checkout again.`, 'error');
+        return;
+      }
+
+      startFrontendCooldown('checkout');
 
       checkoutModalProceed.disabled = true;
       checkoutModalProceed.textContent = 'Opening Stripe…';
@@ -2255,10 +2352,16 @@
         window.location.href = payload.url;
       } catch (error) {
         setPurchaseMessage(error.message, 'error');
-        checkoutButton.disabled = cartState.items.length === 0;
         checkoutButton.textContent = 'Checkout';
-        checkoutModalProceed.disabled = false;
         checkoutModalProceed.textContent = 'Proceed to checkout';
+        holdButtonForCooldown(checkoutButton, 'checkout', 'Checkout', () => {
+          checkoutButton.disabled = cartState.items.length === 0;
+          checkoutButton.textContent = 'Checkout';
+        });
+        holdButtonForCooldown(checkoutModalProceed, 'checkout', 'Proceed to checkout', () => {
+          checkoutModalProceed.disabled = false;
+          checkoutModalProceed.textContent = 'Proceed to checkout';
+        });
       }
     }
 
