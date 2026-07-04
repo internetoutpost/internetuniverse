@@ -549,6 +549,63 @@
       box-shadow: none;
     }
 
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(1, 3, 10, 0.62);
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-backdrop.visible { display: flex; }
+
+    .modal-card {
+      width: min(460px, calc(100vw - 36px));
+      border: 1px solid var(--panel-border);
+      border-radius: 22px;
+      background: rgba(9, 14, 30, 0.92);
+      color: var(--text);
+      box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+      padding: 20px;
+    }
+
+    .modal-card h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    .modal-card p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    .modal-actions button {
+      height: 42px;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: none;
+      white-space: nowrap;
+    }
+
+    .modal-actions .secondary-button {
+      color: var(--muted);
+    }
+
     mark {
       color: #ffffff;
       background: rgba(134, 247, 255, 0.22);
@@ -670,6 +727,21 @@
     </div>
   </section>
 
+
+
+  <div id="checkoutModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="checkoutModalTitle">
+    <div class="modal-card">
+      <h2 id="checkoutModalTitle">Confirm checkout</h2>
+      <p id="checkoutModalBody">After completing payment, your celestial object(s) will be automatically renamed shortly.</p>
+      <p id="checkoutModalNote">You will be redirected to Stripe to complete your secure payment.</p>
+      <div class="modal-actions">
+        <button id="checkoutModalCancel" class="secondary-button" type="button">Cancel</button>
+        <button id="checkoutModalProceed" type="button">Proceed to checkout</button>
+        <button id="checkoutModalClose" type="button" style="display:none;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
@@ -698,6 +770,13 @@
     const cartItems = document.getElementById('cartItems');
     const cartTotal = document.getElementById('cartTotal');
     const checkoutButton = document.getElementById('checkoutButton');
+    const checkoutModal = document.getElementById('checkoutModal');
+    const checkoutModalTitle = document.getElementById('checkoutModalTitle');
+    const checkoutModalBody = document.getElementById('checkoutModalBody');
+    const checkoutModalNote = document.getElementById('checkoutModalNote');
+    const checkoutModalCancel = document.getElementById('checkoutModalCancel');
+    const checkoutModalProceed = document.getElementById('checkoutModalProceed');
+    const checkoutModalClose = document.getElementById('checkoutModalClose');
     const purchasePanel = document.querySelector('.purchase-panel');
     const purchaseMinimize = document.getElementById('purchaseMinimize');
 
@@ -2116,9 +2195,39 @@
       }
     }
 
-    async function startCheckout() {
+    function openCheckoutConfirmModal() {
       if (!cartState.items.length || checkoutButton.disabled) return;
 
+      checkoutModalTitle.textContent = 'Confirm checkout';
+      checkoutModalBody.textContent = 'After completing payment, your celestial object(s) will be automatically renamed shortly.';
+      checkoutModalNote.textContent = 'You will be redirected to Stripe to complete your secure payment.';
+      checkoutModalCancel.style.display = '';
+      checkoutModalProceed.style.display = '';
+      checkoutModalClose.style.display = 'none';
+      checkoutModalProceed.disabled = false;
+      checkoutModalProceed.textContent = 'Proceed to checkout';
+      checkoutModal.classList.add('visible');
+    }
+
+    function closeCheckoutModal() {
+      checkoutModal.classList.remove('visible');
+    }
+
+    function showCheckoutSuccessModal() {
+      checkoutModalTitle.textContent = 'Purchase successful';
+      checkoutModalBody.textContent = 'Your purchase was successful. Try searching for your celestial object(s) to see their new name.';
+      checkoutModalNote.textContent = 'It may take a few minutes to update.';
+      checkoutModalCancel.style.display = 'none';
+      checkoutModalProceed.style.display = 'none';
+      checkoutModalClose.style.display = '';
+      checkoutModal.classList.add('visible');
+    }
+
+    async function startCheckout() {
+      if (!cartState.items.length || checkoutModalProceed.disabled) return;
+
+      checkoutModalProceed.disabled = true;
+      checkoutModalProceed.textContent = 'Opening Stripe…';
       checkoutButton.disabled = true;
       checkoutButton.textContent = 'Opening Stripe…';
       setPurchaseMessage('Preparing secure checkout…');
@@ -2148,6 +2257,8 @@
         setPurchaseMessage(error.message, 'error');
         checkoutButton.disabled = cartState.items.length === 0;
         checkoutButton.textContent = 'Checkout';
+        checkoutModalProceed.disabled = false;
+        checkoutModalProceed.textContent = 'Proceed to checkout';
       }
     }
 
@@ -2158,6 +2269,7 @@
 
       if (checkoutStatus === 'success') {
         setPurchaseMessage('Payment received. Your rename will appear once confirmation is complete.', 'success');
+        showCheckoutSuccessModal();
         loadCart();
       } else if (checkoutStatus === 'cancelled') {
         setPurchaseMessage('Checkout was cancelled. Your unexpired reservations are still in your cart.', 'error');
@@ -2246,7 +2358,12 @@
     addToCartButton.addEventListener('click', addToCart);
     purchaseObjectId.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
     purchaseDesiredName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
-    checkoutButton.addEventListener('click', startCheckout);
+    checkoutButton.addEventListener('click', openCheckoutConfirmModal);
+    checkoutModalCancel.addEventListener('click', closeCheckoutModal);
+    checkoutModalClose.addEventListener('click', closeCheckoutModal);
+    checkoutModalProceed.addEventListener('click', startCheckout);
+    checkoutModal.addEventListener('click', (e) => { if (e.target === checkoutModal) closeCheckoutModal(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCheckoutModal(); });
     purchaseMinimize.addEventListener('click', togglePurchasePanel);
     setInterval(renderCart, 1000);
 
