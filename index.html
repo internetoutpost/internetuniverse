@@ -739,7 +739,7 @@
       <strong>Internet Universe</strong>, a fictional procedurally generated virtual universe.
     </p>
 
-    <p>
+    <p id="checkoutScopeNotice">
       Your purchase applies <strong>only</strong> to the selected celestial object and does
       not include any child objects. For example, purchasing a galaxy renames only that
       galaxy and does not rename any systems, stars or planets contained within it.
@@ -751,7 +751,7 @@
       few minutes for your purchase to appear throughout the site.
     </p>
 
-    <p style="font-size:12px;color:var(--muted);margin-top:18px;">
+    <p id="checkoutTermsNotice" style="font-size:12px;color:var(--muted);margin-top:18px;">
       By clicking <strong>Proceed to checkout</strong>, you confirm that you have read and
       agree to the
       <a href="https://raw.githubusercontent.com/internetoutpost/internetuniverse/refs/heads/main/termsandconditions.txt" target="_blank" style="color:var(--accent);">
@@ -807,6 +807,8 @@
     const checkoutModalTitle = document.getElementById('checkoutModalTitle');
     const checkoutModalBody = document.getElementById('checkoutModalBody');
     const checkoutModalNote = document.getElementById('checkoutModalNote');
+    const checkoutScopeNotice = document.getElementById('checkoutScopeNotice');
+    const checkoutTermsNotice = document.getElementById('checkoutTermsNotice');
     const checkoutModalCancel = document.getElementById('checkoutModalCancel');
     const checkoutModalProceed = document.getElementById('checkoutModalProceed');
     const checkoutModalClose = document.getElementById('checkoutModalClose');
@@ -2370,8 +2372,10 @@
       }
 
       checkoutModalTitle.textContent = 'Confirm checkout';
-      checkoutModalBody.textContent = 'After completing payment, your celestial object(s) will be automatically renamed shortly.';
-      checkoutModalNote.textContent = 'You will be redirected to Stripe to complete your secure payment.';
+      checkoutModalBody.innerHTML = 'You are purchasing the right to rename the selected unclaimed celestial object within <strong>Internet Universe</strong>, a fictional procedurally generated virtual universe.';
+      checkoutScopeNotice.style.display = '';
+      checkoutModalNote.textContent = 'After completing your secure payment through Stripe, your rename will be applied automatically. You will then be redirected back to Internet Universe. Please allow a few minutes for your purchase to appear throughout the site.';
+      checkoutTermsNotice.style.display = '';
       checkoutModalCancel.style.display = '';
       checkoutModalProceed.style.display = '';
       checkoutModalClose.style.display = 'none';
@@ -2387,7 +2391,9 @@
     function showCheckoutSuccessModal() {
       checkoutModalTitle.textContent = 'Purchase successful';
       checkoutModalBody.textContent = 'Your purchase was successful. Try searching for your celestial object(s) to see their new name.';
+      checkoutScopeNotice.style.display = 'none';
       checkoutModalNote.textContent = 'It may take a few minutes to update.';
+      checkoutTermsNotice.style.display = 'none';
       checkoutModalCancel.style.display = 'none';
       checkoutModalProceed.style.display = 'none';
       checkoutModalClose.style.display = '';
