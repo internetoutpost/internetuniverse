@@ -1,0 +1,207 @@
+Internet Universe Terms and Conditions
+
+Last Updated: 4th of July 2026
+
+These Terms and Conditions ("Terms") govern your use of Internet Universe ("Internet Universe", "we", "our", "us"), available at https://internetuniverse.xyz.
+
+By using Internet Universe or purchasing a celestial object rename, you agree to these Terms.
+
+1. About Internet Universe
+
+Internet Universe is an entertainment project featuring a procedurally generated fictional universe.
+
+Internet Universe allows users to purchase the right to rename certain procedurally generated fictional celestial objects displayed within the Internet Universe website.
+
+Purchasing a rename does not constitute the purchase of:
+
+any real-world celestial object;
+any legal ownership of property;
+any scientific naming rights;
+any official astronomical designation.
+
+The sole product being purchased is the display of your chosen name for the purchased fictional celestial object within Internet Universe for as long as Internet Universe continues operating, subject to these Terms.
+
+2. Eligibility
+
+Internet Universe is available to users of all ages.
+
+If you are under the age required to enter into contracts in your jurisdiction, you should obtain permission from a parent or legal guardian before making a purchase.
+
+3. Purchasing a Rename
+
+Purchases are completed using Stripe.
+
+Before payment you select:
+
+the celestial object you wish to rename; and
+the new name you wish to assign.
+
+You are responsible for ensuring both are correct before completing payment.
+
+Once payment has been completed and the rename successfully applied, the rename is considered permanent for as long as Internet Universe continues operating, subject to these Terms.
+
+4. Naming Policy
+
+You may not submit names which:
+
+contain obscene, offensive or hateful language;
+intentionally bypass Internet Universe's word filters;
+promote illegal activity;
+impersonate another individual or organisation in a misleading manner;
+infringe another person's copyright, trademark or other intellectual property rights;
+are otherwise considered inappropriate or contrary to the spirit of Internet Universe.
+
+Internet Universe reserves the sole right to determine whether a submitted name violates this policy.
+
+Internet Universe may remove, replace or modify any purchased name which violates this policy.
+
+No refund will be issued where a rename is removed or altered because it violates this Naming Policy, including attempts to deliberately bypass automated moderation systems.
+
+5. Acceptable Use
+
+You agree not to misuse or interfere with Internet Universe or its services.
+
+In particular, you must not:
+
+intentionally submit excessive or automated requests intended to overload, disrupt or degrade the performance of Internet Universe;
+attempt to bypass rate limits, reservation limits or other security measures;
+use bots, scripts or automated tools to reserve celestial objects without our prior written permission;
+attempt to gain unauthorised access to Internet Universe, its servers, databases or other users' information;
+interfere with the operation, security or availability of Internet Universe;
+use Internet Universe in any manner that is unlawful or intended to harm Internet Universe or its users.
+
+Internet Universe reserves the right to refuse service, cancel reservations, suspend or permanently restrict access, and take any other reasonable action where we believe a user has breached this section.
+
+No refund will be issued where access is restricted or purchases are cancelled as a result of a breach of this Acceptable Use section.
+
+6. Availability
+
+Internet Universe is provided on an "as available" basis.
+
+Although we aim to provide continuous access, we cannot guarantee uninterrupted availability.
+
+The website may become temporarily unavailable due to:
+
+maintenance;
+software updates;
+server failures;
+third-party outages;
+security incidents;
+circumstances beyond our reasonable control.
+
+Temporary downtime does not entitle customers to compensation or refunds.
+
+7. Future Changes
+
+Internet Universe is an evolving project.
+
+We reserve the right to:
+
+modify the procedural generation algorithms;
+expand or alter the universe;
+introduce new features;
+redesign the website;
+rebalance generation probabilities;
+modify search functionality;
+change pricing for future purchases.
+
+Where reasonably possible, purchased renames will continue to be honoured.
+
+8. Refund Policy
+
+Because every rename is personalised specifically for you, all purchases are generally final.
+
+Refunds will only be considered where:
+
+Internet Universe experiences a technical fault which prevents delivery of the purchased rename; and
+the issue cannot reasonably be corrected.
+
+Where possible, we will first attempt to resolve any technical issue before issuing a refund.
+
+Refunds will not be provided because:
+
+you changed your mind;
+you entered the wrong celestial object;
+you entered the wrong name;
+you no longer want the rename;
+your rename violates these Terms;
+you intentionally attempted to bypass the naming restrictions.
+
+Duplicate charges caused by technical errors will be corrected or refunded.
+
+9. What You Are Purchasing
+
+Purchasing a rename grants recognition of your chosen name within Internet Universe only.
+
+A purchase does not provide:
+
+ownership of the website;
+ownership of the software;
+ownership of the procedural generation system;
+ownership of the database;
+ownership of any artwork;
+ownership of any real astronomical object;
+exclusive intellectual property rights over the renamed object.
+10. Intellectual Property
+
+All software, procedural generation systems, graphics, artwork, database structures, logos, trademarks and content remain the property of Internet Universe unless otherwise stated.
+
+Purchasing a rename does not transfer ownership of any intellectual property.
+
+11. Payments
+
+Payments are securely processed by Stripe.
+
+Internet Universe does not store your payment card information.
+
+12. Technical Errors
+
+If Internet Universe is unable to complete a purchased rename because of a technical issue, we may, at our discretion:
+
+correct the issue;
+provide a comparable replacement object; or
+issue a full refund.
+13. Limitation of Liability
+
+Nothing in these Terms limits or excludes any liability which cannot legally be limited or excluded under applicable law.
+
+Subject to the above:
+
+Internet Universe is provided without guarantees of uninterrupted availability.
+We are not liable for downtime, outages, maintenance periods or interruptions to the service.
+We are not liable for indirect or consequential losses, including loss of profits, loss of business opportunities, or loss of data.
+Our maximum liability arising from any purchase shall not exceed the amount paid for that purchase.
+14. Privacy
+
+Internet Universe uses cookies and similar technologies necessary for operation of the website, including maintaining shopping cart sessions.
+
+Payments are processed by Stripe.
+
+Please refer to our Privacy Policy for further information.
+
+15. Contact
+
+Legal correspondence may be sent to:
+
+Jess Silver
+8 Disney St, London SE1 1JF
+
+General enquiries, support requests and technical issues should be directed to:
+
+internetoutpost@proton.me
+
+Please use the email address for all routine correspondence. The postal address is provided solely to fulfil legal requirements.
+
+16. Governing Law
+
+These Terms shall be governed by and interpreted in accordance with the laws of England and Wales.
+
+Any disputes arising from these Terms shall be subject to the exclusive jurisdiction of the courts of England and Wales, except where applicable consumer protection laws provide otherwise.
+
+17. Changes to these Terms
+
+Internet Universe may update these Terms from time to time.
+
+The latest version will always be published on the website.
+
+Continued use of Internet Universe following any changes constitutes acceptance of the revised Terms.
