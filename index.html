@@ -840,7 +840,10 @@
 
     function clearCooldownFeedback(action) {
       const timer = frontendCooldownFeedbackTimers.get(action);
-      if (timer) window.clearInterval(timer);
+      if (timer) {
+        window.clearInterval(timer);
+        window.clearTimeout(timer);
+      }
       frontendCooldownFeedbackTimers.delete(action);
     }
 
@@ -862,21 +865,25 @@
     }
 
     function showAddToCartCooldownFeedback() {
-      const cooldownMessagePrefix = 'Please wait';
-      showCooldownFeedback(
-        'addToCart',
-        (seconds) => {
-          setPurchaseMessage(`Please wait ${seconds} second${seconds === 1 ? '' : 's'} before adding another item.`, 'error');
-        },
-        () => {
-          if (purchaseMessage.textContent.startsWith(cooldownMessagePrefix)) {
-            setPurchaseMessage('');
-          }
-          addToCartButton.classList.remove('cooldown');
-          addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
-          addToCartButton.textContent = 'Add to cart';
+      const message = 'Please wait a few seconds before adding another item.';
+      clearCooldownFeedback('addToCart');
+      setPurchaseMessage(message, 'error');
+      addToCartButton.classList.add('cooldown');
+      addToCartButton.textContent = 'Add to cart';
+      addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+
+      const remaining = Math.max(700, getCooldownRemainingMs('addToCart'));
+      const timer = window.setTimeout(() => {
+        frontendCooldownFeedbackTimers.delete('addToCart');
+        if (purchaseMessage.textContent === message) {
+          setPurchaseMessage('');
         }
-      );
+        addToCartButton.classList.remove('cooldown');
+        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+        addToCartButton.textContent = 'Add to cart';
+      }, remaining);
+
+      frontendCooldownFeedbackTimers.set('addToCart', timer);
     }
     const supabaseClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
@@ -2256,10 +2263,6 @@
     async function addToCart() {
       if (isFrontendCooldownActive('addToCart')) {
         showAddToCartCooldownFeedback();
-        holdButtonForCooldown(addToCartButton, 'addToCart', 'Add to cart', () => {
-          addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
-          addToCartButton.textContent = 'Add to cart';
-        });
         return;
       }
 
@@ -2298,10 +2301,8 @@
         setPurchaseMessage(error.message, 'error');
       } finally {
         addToCartButton.textContent = 'Add to cart';
-        holdButtonForCooldown(addToCartButton, 'addToCart', 'Add to cart', () => {
-          addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
-          addToCartButton.textContent = 'Add to cart';
-        });
+        addToCartButton.classList.remove('cooldown');
+        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
       }
     }
 
