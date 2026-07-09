@@ -493,6 +493,19 @@
       padding: 8px 0;
     }
 
+    .purchase-support {
+      padding-top: 4px;
+      text-align: center;
+    }
+
+    .purchase-support a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .purchase-support a:hover { text-decoration: underline; }
+
     .cart-item {
       display: grid;
       grid-template-columns: 1.35fr 1fr auto auto auto;
@@ -615,32 +628,95 @@
     }
 
     @media (max-width: 780px) {
+      .hud, .details { display: none; }
+
       .search-panel {
-        left: 18px;
-        right: 18px;
-        top: 18px;
+        left: 10px;
+        right: 10px;
+        top: 10px;
         bottom: auto;
         width: auto;
         max-height: 34vh;
+        padding: 12px;
+        z-index: 8;
+      }
+
+      .search-row { flex-wrap: wrap; }
+      .search-row select { flex: 1 0 120px; }
+      .search-row button { flex: 1 0 92px; }
+      .search-row .wide-button { flex: 1 0 180px; }
+
+      .nav, .controls {
+        z-index: 9;
+        gap: 7px;
+      }
+
+      .nav button, .controls button {
+        min-width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        padding: 0 11px;
       }
 
       .purchase-panel {
-        left: 18px;
-        right: 18px;
-        bottom: 18px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
         width: auto;
-        max-height: 34vh;
+        max-height: none;
         overflow: auto;
+        z-index: 10;
+        transition: top 180ms ease, bottom 180ms ease, border-radius 180ms ease, background 180ms ease;
       }
 
-      .search-row, .purchase-row { flex-wrap: wrap; }
-      .search-row select { flex: 1 0 120px; }
+      .purchase-panel:not(.minimized) {
+        top: 10px;
+        bottom: 10px;
+        border-radius: 20px;
+      }
+
+      .purchase-panel.minimized {
+        top: auto;
+        max-height: none;
+        min-height: 86px;
+        overflow: visible;
+        cursor: pointer;
+      }
+
+      .purchase-panel.minimized .purchase-header {
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        text-align: center;
+      }
+
+      .purchase-panel.minimized h2 {
+        font-size: 14px;
+      }
+
+      .purchase-panel:not(.minimized) .purchase-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding-bottom: 4px;
+        background: rgba(9, 14, 30, 0.92);
+      }
+
+      .purchase-minimize {
+        min-width: 34px;
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+      }
+
+      .purchase-row { flex-wrap: wrap; }
       .purchase-field-labels { grid-template-columns: 1fr; }
       .purchase-field-labels span:last-child { display: none; }
       .purchase-row input { flex: 1 0 100% !important; }
       .purchase-row button { flex: 1 0 100%; }
       .cart-item { grid-template-columns: 1fr; }
       .cart-remove { justify-self: start; }
+      .modal-card { max-height: calc(100dvh - 36px); overflow: auto; }
     }
   </style>
 </head>
@@ -725,6 +801,7 @@
       </div>
       <div id="cartItems" class="cart-items" aria-live="polite"></div>
       <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
+      <div class="cart-empty purchase-support">Having issues? Email <a href="mailto:example@example.example">example@example.example</a>.</div>
     </div>
   </section>
 
@@ -796,6 +873,7 @@
     const randomUnclaimedButton = document.getElementById('randomUnclaimedButton');
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
+    const searchPanel = document.querySelector('.search-panel');
     const purchaseObjectId = document.getElementById('purchaseObjectId');
     const purchaseDesiredName = document.getElementById('purchaseDesiredName');
     const addToCartButton = document.getElementById('addToCartButton');
@@ -824,6 +902,12 @@
     const MIN_NAME_LENGTH = 1;
     const MAX_NAME_LENGTH = 60;
     const cartPrices = { galaxy: 100, system: 10, planet: 2 };
+
+    const MOBILE_BREAKPOINT = 780;
+
+    function isMobileLayout() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
 
     const FRONTEND_COOLDOWNS = {
       search: 900,
@@ -1227,7 +1311,20 @@
 
 
     function positionNavigationControls() {
-      if (!hud || !controlsPanel || !navPanel) return;
+      if (!controlsPanel || !navPanel) return;
+
+      if (isMobileLayout()) {
+        const searchBox = searchPanel ? searchPanel.getBoundingClientRect() : { bottom: 10, left: 10 };
+        const top = Math.round(searchBox.bottom + 10);
+        navPanel.style.top = top + 'px';
+        navPanel.style.left = Math.round(searchBox.left) + 'px';
+        const navBox = navPanel.getBoundingClientRect();
+        controlsPanel.style.top = top + 'px';
+        controlsPanel.style.left = Math.round(navBox.right + 8) + 'px';
+        return;
+      }
+
+      if (!hud) return;
       const hudBox = hud.getBoundingClientRect();
       const top = Math.round(hudBox.bottom + 12);
       navPanel.style.top = top + 'px';
@@ -1247,6 +1344,7 @@
       canvas.style.height = state.height + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       resetView();
+      syncPurchasePanelForViewport();
       positionNavigationControls();
     }
 
@@ -2471,12 +2569,45 @@
       window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    function togglePurchasePanel() {
-      const minimized = purchasePanel.classList.toggle('minimized');
+    function updatePurchasePanelToggleUi() {
+      const minimized = purchasePanel.classList.contains('minimized');
+
+      if (isMobileLayout()) {
+        purchaseMinimize.textContent = minimized ? '↑' : '↓';
+        purchaseMinimize.setAttribute('aria-label', minimized ? 'Expand purchase panel' : 'Collapse purchase panel');
+        purchaseMinimize.setAttribute('title', minimized ? 'Expand' : 'Collapse');
+        purchaseMinimize.dataset.tooltip = minimized ? 'Expand' : 'Collapse';
+        return;
+      }
+
       purchaseMinimize.textContent = minimized ? '+' : '−';
       purchaseMinimize.setAttribute('aria-label', minimized ? 'Expand purchase panel' : 'Minimise purchase panel');
       purchaseMinimize.setAttribute('title', minimized ? 'Expand' : 'Minimise');
       purchaseMinimize.dataset.tooltip = minimized ? 'Expand' : 'Minimise';
+    }
+
+    function setPurchasePanelMinimized(minimized) {
+      purchasePanel.classList.toggle('minimized', minimized);
+      updatePurchasePanelToggleUi();
+    }
+
+    function syncPurchasePanelForViewport() {
+      if (isMobileLayout()) {
+        if (!purchasePanel.dataset.mobileInitialized) {
+          purchasePanel.dataset.mobileInitialized = 'true';
+          setPurchasePanelMinimized(true);
+        } else {
+          updatePurchasePanelToggleUi();
+        }
+      } else {
+        delete purchasePanel.dataset.mobileInitialized;
+        setPurchasePanelMinimized(false);
+      }
+      positionNavigationControls();
+    }
+
+    function togglePurchasePanel() {
+      setPurchasePanelMinimized(!purchasePanel.classList.contains('minimized'));
     }
 
     function zoomAt(clientX, clientY, factor) {
@@ -2553,7 +2684,15 @@
     checkoutModalProceed.addEventListener('click', startCheckout);
     checkoutModal.addEventListener('click', (e) => { if (e.target === checkoutModal) closeCheckoutModal(); });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCheckoutModal(); });
-    purchaseMinimize.addEventListener('click', togglePurchasePanel);
+    purchaseMinimize.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePurchasePanel();
+    });
+    purchasePanel.addEventListener('click', () => {
+      if (isMobileLayout() && purchasePanel.classList.contains('minimized')) {
+        setPurchasePanelMinimized(false);
+      }
+    });
     setInterval(renderCart, 1000);
 
     window.addEventListener('resize', resize);
