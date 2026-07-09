@@ -31,6 +31,7 @@
       width: 100vw;
       height: 100vh;
       cursor: grab;
+      touch-action: none;
     }
 
     canvas.dragging { cursor: grabbing; }
@@ -563,6 +564,20 @@
       box-shadow: none;
     }
 
+    .purchase-support {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .purchase-support a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .purchase-support a:hover { text-decoration: underline; }
+
 
     .modal-backdrop {
       position: fixed;
@@ -639,12 +654,15 @@
         max-height: 34vh;
         padding: 12px;
         z-index: 8;
+        background: rgba(9, 14, 30, 0.94);
       }
 
-      .search-row { flex-wrap: wrap; }
-      .search-row select { flex: 1 0 120px; }
-      .search-row button { flex: 1 0 92px; }
-      .search-row .wide-button { flex: 1 0 180px; }
+      .search-row { flex-wrap: nowrap; }
+      .search-row input { flex: 1 1 auto; min-width: 0; }
+      .search-row select { flex: 0 0 74px; width: 74px; padding: 0 8px; }
+      .search-row button { flex: 0 0 78px; min-width: 78px; padding: 0 10px; }
+      .search-row .wide-button { flex: 1 1 auto; min-width: 0; }
+      #randomType { flex: 0 0 108px; width: 108px; }
 
       .nav, .controls {
         z-index: 9;
@@ -667,6 +685,7 @@
         overflow: auto;
         z-index: 10;
         transition: top 180ms ease, bottom 180ms ease, border-radius 180ms ease, background 180ms ease;
+        background: rgba(9, 14, 30, 0.96);
       }
 
       .purchase-panel:not(.minimized) {
@@ -699,7 +718,7 @@
         top: 0;
         z-index: 2;
         padding-bottom: 4px;
-        background: rgba(9, 14, 30, 0.92);
+        background: rgba(9, 14, 30, 0.96);
       }
 
       .purchase-minimize {
@@ -801,6 +820,7 @@
       </div>
       <div id="cartItems" class="cart-items" aria-live="polite"></div>
       <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
+      <div class="purchase-support">For any issues, email <a href="mailto:example@example.example">example@example.example</a>.</div>
       <div class="cart-empty purchase-support">Having issues? Email <a href="mailto:example@example.example">example@example.example</a>.</div>
     </div>
   </section>
@@ -2610,6 +2630,31 @@
       setPurchasePanelMinimized(!purchasePanel.classList.contains('minimized'));
     }
 
+
+    const touchState = {
+      active: false,
+      moved: false,
+      longPressed: false,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      timer: null
+    };
+
+    function clearTouchLongPressTimer() {
+      if (touchState.timer) {
+        window.clearTimeout(touchState.timer);
+        touchState.timer = null;
+      }
+    }
+
+    function enterObject(target) {
+      if (!target || target.isStar) return;
+      if (state.view === 'galaxies') setView('systems', target);
+      else if (state.view === 'systems') setView('planets', target);
+    }
+
     function zoomAt(clientX, clientY, factor) {
       const before = screenToWorld(clientX, clientY);
       state.scale = Math.min(state.maxScale, Math.max(state.minScale, state.scale * factor));
@@ -2644,11 +2689,85 @@
     });
 
     canvas.addEventListener('click', (e) => {
-      if (state.clickMoved) return;
+      if (state.clickMoved || touchState.longPressed) return;
       const target = hitTest(e.clientX, e.clientY);
-      if (!target) return;
-      if (state.view === 'galaxies') setView('systems', target);
-      else if (state.view === 'systems') setView('planets', target);
+      enterObject(target);
+    });
+
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (!isMobileLayout() || e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchState.active = true;
+      touchState.moved = false;
+      touchState.longPressed = false;
+      touchState.startX = touch.clientX;
+      touchState.startY = touch.clientY;
+      touchState.lastX = touch.clientX;
+      touchState.lastY = touch.clientY;
+      state.dragging = true;
+      state.clickMoved = false;
+      canvas.classList.add('dragging');
+
+      clearTouchLongPressTimer();
+      touchState.timer = window.setTimeout(() => {
+        if (!touchState.active || touchState.moved) return;
+        const target = hitTest(touchState.startX, touchState.startY);
+        if (!target) return;
+        touchState.longPressed = true;
+        state.dragging = false;
+        canvas.classList.remove('dragging');
+        updateHover(touchState.startX, touchState.startY);
+      }, 520);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (!isMobileLayout() || !touchState.active || e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const totalDx = touch.clientX - touchState.startX;
+      const totalDy = touch.clientY - touchState.startY;
+      const dx = touch.clientX - touchState.lastX;
+      const dy = touch.clientY - touchState.lastY;
+
+      if (Math.hypot(totalDx, totalDy) > 8) {
+        touchState.moved = true;
+        state.clickMoved = true;
+        clearTouchLongPressTimer();
+      }
+
+      if (!touchState.longPressed) {
+        state.offsetX += dx;
+        state.offsetY += dy;
+        tooltip.classList.remove('visible');
+      }
+
+      touchState.lastX = touch.clientX;
+      touchState.lastY = touch.clientY;
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (!isMobileLayout() || !touchState.active) return;
+      e.preventDefault();
+      clearTouchLongPressTimer();
+      state.dragging = false;
+      canvas.classList.remove('dragging');
+
+      if (!touchState.moved && !touchState.longPressed) {
+        const target = hitTest(touchState.startX, touchState.startY);
+        enterObject(target);
+      }
+
+      touchState.active = false;
+      window.setTimeout(() => { touchState.longPressed = false; }, 0);
+    }, { passive: false });
+
+    canvas.addEventListener('touchcancel', () => {
+      clearTouchLongPressTimer();
+      touchState.active = false;
+      state.dragging = false;
+      canvas.classList.remove('dragging');
     });
 
     canvas.addEventListener('wheel', (e) => {
