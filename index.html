@@ -157,6 +157,55 @@
     .tooltip.visible { opacity: 1; }
     .tooltip b { color: var(--accent); }
 
+    .object-context-menu {
+      position: fixed;
+      z-index: 30;
+      display: none;
+      min-width: 220px;
+      max-width: min(340px, calc(100vw - 24px));
+      padding: 6px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(5, 9, 22, 0.97);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.52);
+    }
+
+    .object-context-menu.visible {
+      display: block;
+    }
+
+    .object-context-menu button {
+      width: 100%;
+      height: auto;
+      min-height: 40px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      box-shadow: none;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .object-context-menu button[disabled] {
+      opacity: 1;
+      cursor: default;
+      color: var(--muted);
+    }
+
+    .object-context-menu-status {
+      display: none;
+      padding: 6px 10px 4px;
+      color: var(--accent);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .object-context-menu-status.visible {
+      display: block;
+    }
+
 
     .search-panel {
       position: fixed;
@@ -764,6 +813,11 @@
 
   <div id="tooltip" class="tooltip"></div>
 
+  <div id="objectContextMenu" class="object-context-menu" role="menu" aria-hidden="true">
+    <button id="objectContextMenuAction" type="button" role="menuitem"></button>
+    <div id="objectContextMenuStatus" class="object-context-menu-status" aria-live="polite"></div>
+  </div>
+
 
   <section class="search-panel" aria-label="Search generated universe">
     <div class="search-meta">Search galaxies / systems / planets</div>
@@ -877,6 +931,9 @@
     const canvas = document.getElementById('universe');
     const ctx = canvas.getContext('2d');
     const tooltip = document.getElementById('tooltip');
+    const objectContextMenu = document.getElementById('objectContextMenu');
+    const objectContextMenuAction = document.getElementById('objectContextMenuAction');
+    const objectContextMenuStatus = document.getElementById('objectContextMenuStatus');
     const title = document.getElementById('title');
     const instructions = document.getElementById('instructions');
     const crumbs = document.getElementById('crumbs');
@@ -916,23 +973,6 @@
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
     const CREATE_CHECKOUT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout`;
-
-    function getOrCreateCartSessionID() {
-      const storageKey = 'internet_universe_cart_session';
-      let cartSessionID = localStorage.getItem(storageKey);
-
-      const uuidPattern =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-      if (!cartSessionID || !uuidPattern.test(cartSessionID)) {
-        cartSessionID = crypto.randomUUID();
-        localStorage.setItem(storageKey, cartSessionID);
-      }
-
-      return cartSessionID;
-    }
-
-    const cartSessionID = getOrCreateCartSessionID();
     const cartState = { items: [], loading: false };
     const CART_ITEM_LIMIT = 10;
     const MIN_NAME_LENGTH = 1;
@@ -2360,8 +2400,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'x-cart-session-id': cartSessionID
+          'apikey': SUPABASE_PUBLISHABLE_KEY
         }
       };
       if (body) options.body = JSON.stringify(body);
@@ -2557,8 +2596,7 @@
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'x-cart-session-id': cartSessionID
+            'apikey': SUPABASE_PUBLISHABLE_KEY
           }
         });
 
@@ -2649,6 +2687,120 @@
     }
 
 
+    const contextMenuState = {
+      target: null,
+      kind: null,
+      copyValue: null,
+      requestToken: 0
+    };
+
+    function hideObjectContextMenu() {
+      contextMenuState.target = null;
+      contextMenuState.kind = null;
+      contextMenuState.copyValue = null;
+      contextMenuState.requestToken += 1;
+      objectContextMenu.classList.remove('visible');
+      objectContextMenu.setAttribute('aria-hidden', 'true');
+      objectContextMenuAction.disabled = false;
+      objectContextMenuStatus.classList.remove('visible');
+      objectContextMenuStatus.textContent = '';
+    }
+
+    function positionObjectContextMenu(clientX, clientY) {
+      objectContextMenu.style.left = '0px';
+      objectContextMenu.style.top = '0px';
+      objectContextMenu.classList.add('visible');
+      objectContextMenu.setAttribute('aria-hidden', 'false');
+
+      const menuBox = objectContextMenu.getBoundingClientRect();
+      const margin = 8;
+      const left = Math.min(
+        Math.max(margin, clientX),
+        Math.max(margin, window.innerWidth - menuBox.width - margin)
+      );
+      const top = Math.min(
+        Math.max(margin, clientY),
+        Math.max(margin, window.innerHeight - menuBox.height - margin)
+      );
+
+      objectContextMenu.style.left = `${left}px`;
+      objectContextMenu.style.top = `${top}px`;
+    }
+
+    async function copyTextToClipboard(value) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+        return;
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      const copied = document.execCommand('copy');
+      textarea.remove();
+
+      if (!copied) throw new Error('Clipboard copy failed.');
+    }
+
+    async function showObjectContextMenu(clientX, clientY, target) {
+      hideObjectContextMenu();
+
+      if (!target) return;
+
+      contextMenuState.target = target;
+      const token = ++contextMenuState.requestToken;
+
+      if (target.isStar) {
+        objectContextMenuAction.textContent =
+          'Claiming a solar system automatically renames its star';
+        objectContextMenuAction.disabled = true;
+        positionObjectContextMenu(clientX, clientY);
+        return;
+      }
+
+      const kind = getCurrentObjectKind();
+      const proceduralID = target.name;
+      contextMenuState.kind = kind;
+      objectContextMenuAction.disabled = true;
+      objectContextMenuAction.textContent = 'Loading name…';
+      positionObjectContextMenu(clientX, clientY);
+
+      const info = await getClaimedInfo(kind, proceduralID);
+
+      if (
+        token !== contextMenuState.requestToken ||
+        contextMenuState.target !== target
+      ) return;
+
+      const valueToCopy = info.claimed ? info.displayName : proceduralID;
+      contextMenuState.copyValue = valueToCopy;
+      objectContextMenuAction.disabled = false;
+      objectContextMenuAction.textContent = `Copy name: ${valueToCopy}`;
+      positionObjectContextMenu(clientX, clientY);
+    }
+
+    objectContextMenuAction.addEventListener('click', async () => {
+      const value = contextMenuState.copyValue;
+      if (!value || objectContextMenuAction.disabled) return;
+
+      try {
+        await copyTextToClipboard(value);
+        objectContextMenuStatus.textContent = 'Copied to clipboard';
+        objectContextMenuStatus.classList.add('visible');
+        window.setTimeout(hideObjectContextMenu, 850);
+      } catch (error) {
+        console.error('Could not copy object name:', error);
+        objectContextMenuStatus.textContent = 'Could not copy';
+        objectContextMenuStatus.classList.add('visible');
+      }
+    });
+
     const touchState = {
       active: false,
       moved: false,
@@ -2680,7 +2832,22 @@
       state.offsetY = clientY - before.y * state.scale;
     }
 
+    canvas.addEventListener('contextmenu', (e) => {
+      const target = hitTest(e.clientX, e.clientY);
+
+      if (!target) {
+        hideObjectContextMenu();
+        return;
+      }
+
+      e.preventDefault();
+      tooltip.classList.remove('visible');
+      showObjectContextMenu(e.clientX, e.clientY, target);
+    });
+
     canvas.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      hideObjectContextMenu();
       state.dragging = true;
       state.clickMoved = false;
       state.lastX = e.clientX;
@@ -2789,11 +2956,22 @@
     });
 
     canvas.addEventListener('wheel', (e) => {
+      hideObjectContextMenu();
       e.preventDefault();
       zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.88);
     }, { passive: false });
 
+    document.addEventListener('mousedown', (e) => {
+      if (!objectContextMenu.contains(e.target) && e.target !== canvas) {
+        hideObjectContextMenu();
+      }
+    });
+
+    window.addEventListener('blur', hideObjectContextMenu);
+    window.addEventListener('resize', hideObjectContextMenu);
+
     backButton.addEventListener('click', () => {
+      hideObjectContextMenu();
       if (state.view === 'planets') setView('systems', state.galaxy);
       else if (state.view === 'systems') setView('galaxies');
     });
