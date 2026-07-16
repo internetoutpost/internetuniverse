@@ -916,6 +916,23 @@
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
     const CREATE_CHECKOUT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout`;
+
+    function getOrCreateCartSessionID() {
+      const storageKey = 'internet_universe_cart_session';
+      let cartSessionID = localStorage.getItem(storageKey);
+
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if (!cartSessionID || !uuidPattern.test(cartSessionID)) {
+        cartSessionID = crypto.randomUUID();
+        localStorage.setItem(storageKey, cartSessionID);
+      }
+
+      return cartSessionID;
+    }
+
+    const cartSessionID = getOrCreateCartSessionID();
     const cartState = { items: [], loading: false };
     const CART_ITEM_LIMIT = 10;
     const MIN_NAME_LENGTH = 1;
@@ -2343,7 +2360,8 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': SUPABASE_PUBLISHABLE_KEY
+          'apikey': SUPABASE_PUBLISHABLE_KEY,
+          'x-cart-session-id': cartSessionID
         }
       };
       if (body) options.body = JSON.stringify(body);
@@ -2539,7 +2557,8 @@
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+          'x-cart-session-id': cartSessionID
           }
         });
 
