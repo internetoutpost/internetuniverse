@@ -50,8 +50,60 @@
       left: 18px;
       width: min(390px, calc(100vw - 36px));
       padding: 18px;
-      pointer-events: none;
+      pointer-events: auto;
     }
+
+    .hud-purchase-action {
+      display: none;
+      width: 100%;
+      height: 44px;
+      margin-top: 12px;
+      border-color: rgba(134, 247, 255, 0.8);
+      background: linear-gradient(135deg, rgba(29, 104, 128, 0.9), rgba(25, 54, 104, 0.94));
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      box-shadow:
+        0 0 12px rgba(134, 247, 255, 0.45),
+        0 0 28px rgba(134, 247, 255, 0.22),
+        0 12px 30px rgba(0, 0, 0, 0.3);
+      animation: hudPurchaseGlow 1.8s ease-in-out infinite alternate;
+    }
+
+    .hud-purchase-action.visible { display: block; }
+
+    @keyframes hudPurchaseGlow {
+      from {
+        box-shadow:
+          0 0 9px rgba(134, 247, 255, 0.34),
+          0 0 18px rgba(134, 247, 255, 0.16),
+          0 12px 30px rgba(0, 0, 0, 0.3);
+      }
+      to {
+        box-shadow:
+          0 0 17px rgba(134, 247, 255, 0.72),
+          0 0 38px rgba(134, 247, 255, 0.3),
+          0 12px 30px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    .mobile-current-purchase {
+      display: none;
+      position: fixed;
+      z-index: 9;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      height: 42px;
+      font-size: 13px;
+      font-weight: 900;
+      border-color: rgba(134, 247, 255, 0.8);
+      background: rgba(12, 47, 77, 0.97);
+      box-shadow: 0 0 18px rgba(134, 247, 255, 0.42);
+    }
+
+    .mobile-current-purchase.visible { display: none; }
 
     .details {
       left: 18px;
@@ -684,6 +736,57 @@
       color: var(--muted);
     }
 
+    .rename-object-summary {
+      margin: 4px 0 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(2, 5, 14, 0.45);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .rename-object-summary strong {
+      color: var(--accent);
+    }
+
+    .rename-modal-label {
+      display: block;
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .rename-modal-input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(2, 5, 14, 0.68);
+      color: var(--text);
+      padding: 0 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    .rename-modal-input:focus {
+      border-color: rgba(134, 247, 255, 0.7);
+      box-shadow: 0 0 0 3px rgba(134, 247, 255, 0.08);
+    }
+
+    .rename-modal-message {
+      min-height: 18px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .rename-modal-message.error { color: #ff9aa8; }
+    .rename-modal-message.success { color: var(--accent); }
+
     mark {
       color: #ffffff;
       background: rgba(134, 247, 255, 0.22);
@@ -693,6 +796,10 @@
 
     @media (max-width: 780px) {
       .hud, .details { display: none; }
+
+      .mobile-current-purchase.visible {
+        display: block;
+      }
 
       .search-panel {
         left: 10px;
@@ -795,7 +902,10 @@
     <h1 id="title">Observable Cluster</h1>
     <p id="instructions"><strong>Drag</strong> to navigate. <strong>Wheel</strong> to zoom. <strong>Click</strong> a galaxy to enter it.</p>
     <div class="crumbs" id="crumbs"></div>
+    <button id="hudAddToCart" class="hud-purchase-action" type="button">Add to cart</button>
   </section>
+
+  <button id="mobileCurrentPurchase" class="mobile-current-purchase" type="button">Add to cart</button>
 
   <section class="details" id="details">
     <p><strong>Universe generated:</strong> 1,000 galaxies · 75–125 systems per galaxy · 0–10 planets per system.</p>
@@ -857,16 +967,6 @@
         <span>System + Star</span><span>$10</span>
         <span>Planet</span><span>$2</span>
       </div>
-      <div class="purchase-field-labels" aria-hidden="true">
-        <span>Celestial ID</span>
-        <span>New Name</span>
-        <span>Add</span>
-      </div>
-      <div class="purchase-row">
-        <input id="purchaseObjectId" type="text" placeholder="Kepler Galaxy G-FD" aria-label="Celestial ID" />
-        <input id="purchaseDesiredName" type="text" placeholder="My Galaxy" aria-label="New name" minlength="1" maxlength="60" />
-        <button id="addToCartButton">Add to cart</button>
-      </div>
       <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
       <div class="cart-title-row">
         <h3>Cart</h3>
@@ -879,6 +979,38 @@
   </section>
 
 
+
+  <div id="renameModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle">
+    <div class="modal-card">
+      <h2 id="renameModalTitle">Rename this object</h2>
+      <div id="renameObjectSummary" class="rename-object-summary"></div>
+      <label class="rename-modal-label" for="renameDesiredName">New name</label>
+      <input
+        id="renameDesiredName"
+        class="rename-modal-input"
+        type="text"
+        minlength="1"
+        maxlength="60"
+        autocomplete="off"
+        placeholder="Enter the new name"
+      />
+      <div id="renameModalMessage" class="rename-modal-message" aria-live="polite"></div>
+      <div class="modal-actions">
+        <button id="renameModalCancel" class="secondary-button" type="button">Cancel</button>
+        <button id="renameModalAdd" type="button">Add to cart</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="starInfoModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="starInfoModalTitle">
+    <div class="modal-card">
+      <h2 id="starInfoModalTitle">This star is included with its system</h2>
+      <p id="starInfoModalBody"></p>
+      <div class="modal-actions">
+        <button id="starInfoModalClose" type="button">Close</button>
+      </div>
+    </div>
+  </div>
 
   <div id="checkoutModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="checkoutModalTitle">
   <div class="modal-card">
@@ -950,10 +1082,19 @@
     const searchMeta = document.getElementById('searchMeta');
     const searchResults = document.getElementById('searchResults');
     const searchPanel = document.querySelector('.search-panel');
-    const purchaseObjectId = document.getElementById('purchaseObjectId');
-    const purchaseDesiredName = document.getElementById('purchaseDesiredName');
-    const addToCartButton = document.getElementById('addToCartButton');
+    const hudAddToCart = document.getElementById('hudAddToCart');
+    const mobileCurrentPurchase = document.getElementById('mobileCurrentPurchase');
     const purchaseMessage = document.getElementById('purchaseMessage');
+    const renameModal = document.getElementById('renameModal');
+    const renameModalTitle = document.getElementById('renameModalTitle');
+    const renameObjectSummary = document.getElementById('renameObjectSummary');
+    const renameDesiredName = document.getElementById('renameDesiredName');
+    const renameModalMessage = document.getElementById('renameModalMessage');
+    const renameModalCancel = document.getElementById('renameModalCancel');
+    const renameModalAdd = document.getElementById('renameModalAdd');
+    const starInfoModal = document.getElementById('starInfoModal');
+    const starInfoModalBody = document.getElementById('starInfoModalBody');
+    const starInfoModalClose = document.getElementById('starInfoModalClose');
     const cartItems = document.getElementById('cartItems');
     const cartTotal = document.getElementById('cartTotal');
     const checkoutButton = document.getElementById('checkoutButton');
@@ -974,6 +1115,7 @@
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
     const CREATE_CHECKOUT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout`;
     const cartState = { items: [], loading: false };
+    const purchaseSelection = { object: null, objectID: '', objectType: '', price: 0 };
     const CART_ITEM_LIMIT = 10;
     const MIN_NAME_LENGTH = 1;
     const MAX_NAME_LENGTH = 60;
@@ -1058,23 +1200,28 @@
       frontendCooldownFeedbackTimers.set(action, window.setInterval(tick, 250));
     }
 
+    function setRenameModalMessage(message, type = '') {
+      renameModalMessage.textContent = message || '';
+      renameModalMessage.className = `rename-modal-message ${type}`.trim();
+    }
+
     function showAddToCartCooldownFeedback() {
       const message = 'Please wait a few seconds before adding another item.';
       clearCooldownFeedback('addToCart');
-      setPurchaseMessage(message, 'error');
-      addToCartButton.classList.add('cooldown');
-      addToCartButton.textContent = 'Add to cart';
-      addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+      setRenameModalMessage(message, 'error');
+      renameModalAdd.classList.add('cooldown');
+      renameModalAdd.textContent = 'Add to cart';
+      renameModalAdd.disabled = cartState.items.length >= CART_ITEM_LIMIT;
 
       const remaining = Math.max(700, getCooldownRemainingMs('addToCart'));
       const timer = window.setTimeout(() => {
         frontendCooldownFeedbackTimers.delete('addToCart');
-        if (purchaseMessage.textContent === message) {
-          setPurchaseMessage('');
+        if (renameModalMessage.textContent === message) {
+          setRenameModalMessage('');
         }
-        addToCartButton.classList.remove('cooldown');
-        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
-        addToCartButton.textContent = 'Add to cart';
+        renameModalAdd.classList.remove('cooldown');
+        renameModalAdd.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+        renameModalAdd.textContent = 'Add to cart';
       }, remaining);
 
       frontendCooldownFeedbackTimers.set('addToCart', timer);
@@ -1397,6 +1544,8 @@
         const navBox = navPanel.getBoundingClientRect();
         controlsPanel.style.top = top + 'px';
         controlsPanel.style.left = Math.round(navBox.right + 8) + 'px';
+        const controlsBox = controlsPanel.getBoundingClientRect();
+        mobileCurrentPurchase.style.top = `${Math.round(controlsBox.bottom + 9)}px`;
         return;
       }
 
@@ -1499,6 +1648,60 @@
       return getClaimTagHtml(claimedStatusCache.get(cacheKey));
     }
 
+    function getCurrentPurchasableObject() {
+      if (state.view === 'systems' && state.galaxy) {
+        return { kind: 'galaxy', object: state.galaxy };
+      }
+      if (state.view === 'planets' && state.system) {
+        return { kind: 'system', object: state.system };
+      }
+      return null;
+    }
+
+    function setHudPurchaseButtonVisible(visible, kind = '') {
+      const label = kind === 'galaxy'
+        ? 'Add this galaxy to cart — $100'
+        : 'Add this system + star to cart — $10';
+
+      hudAddToCart.textContent = label;
+      mobileCurrentPurchase.textContent = label;
+      hudAddToCart.classList.toggle('visible', visible);
+      mobileCurrentPurchase.classList.toggle('visible', visible);
+      requestAnimationFrame(positionNavigationControls);
+
+      if (visible && isMobileLayout()) {
+        const controlsBox = controlsPanel.getBoundingClientRect();
+        mobileCurrentPurchase.style.top = `${Math.round(controlsBox.bottom + 9)}px`;
+      }
+    }
+
+    async function updateHudPurchaseAction(token) {
+      const current = getCurrentPurchasableObject();
+      if (!current) {
+        setHudPurchaseButtonVisible(false);
+        return;
+      }
+
+      if (cartState.items.some(item => item.objectID === current.object.name)) {
+        setHudPurchaseButtonVisible(false);
+        return;
+      }
+
+      const cacheKey = getObjectCacheKey(current.kind, current.object.name);
+      if (claimedStatusCache.has(cacheKey)) {
+        setHudPurchaseButtonVisible(!claimedStatusCache.get(cacheKey), current.kind);
+        return;
+      }
+
+      setHudPurchaseButtonVisible(false);
+      const info = await getClaimedInfo(current.kind, current.object.name);
+      if (token !== state.hudLookupToken) return;
+
+      const latest = getCurrentPurchasableObject();
+      if (!latest || latest.kind !== current.kind || latest.object !== current.object) return;
+      setHudPurchaseButtonVisible(!info.claimed, current.kind);
+    }
+
     function updateHud() {
       const token = ++state.hudLookupToken;
       requestAnimationFrame(positionNavigationControls);
@@ -1509,6 +1712,7 @@
         crumbs.innerHTML = '<span class="crumb">1,000 galaxies</span><span class="crumb">' + totalSystemCount.toLocaleString() + ' systems</span><span class="crumb">' + totalPlanetCount.toLocaleString() + ' planets</span>';
         details.innerHTML = '<p><strong>Universe level:</strong> Every visible point is a galaxy. Each galaxy contains 75–125 procedural systems.</p>';
         backButton.disabled = true;
+        updateHudPurchaseAction(token);
         return;
       }
 
@@ -1523,6 +1727,7 @@
         backButton.disabled = false;
 
         refreshHudName('galaxy', galaxyId, 'systems', token);
+        updateHudPurchaseAction(token);
         return;
       }
 
@@ -1539,6 +1744,7 @@
 
       refreshHudName('galaxy', galaxyId, 'planets', token);
       refreshHudName('system', systemId, 'planets', token);
+      updateHudPurchaseAction(token);
     }
 
     function preloadPlanetNames() {
@@ -1922,8 +2128,13 @@
       const cachedClaimed = claimedStatusCache.has(cacheKey) ? claimedStatusCache.get(cacheKey) : null;
       const body = buildTooltipBody(nearest);
 
+      const cachedPurchaseHint =
+        kind === 'planet' && cachedClaimed === false
+          ? '<br><span style="color:#86f7ff;font-weight:800">Click to add to cart</span>'
+          : '';
+
       tooltip.innerHTML = cachedName && cachedClaimed !== null
-        ? `<b>${escapeHtml(cachedName)}</b>${getClaimTagHtml(cachedClaimed)}<br>${body}`
+        ? `<b>${escapeHtml(cachedName)}</b>${getClaimTagHtml(cachedClaimed)}<br>${body}${cachedPurchaseHint}`
         : `<b>Loading...</b><br>${body}`;
 
       // Query Supabase only when needed, and cache the result.
@@ -1933,7 +2144,11 @@
       if (state.hover !== nearest || token !== state.hoverLookupToken) return;
 
       nearest.displayName = info.displayName;
-      tooltip.innerHTML = `<b>${escapeHtml(info.displayName)}</b>${getClaimTagHtml(info.claimed)}<br>${body}`;
+      const purchaseHint =
+        kind === 'planet' && !info.claimed
+          ? '<br><span style="color:#86f7ff;font-weight:800">Click to add to cart</span>'
+          : '';
+      tooltip.innerHTML = `<b>${escapeHtml(info.displayName)}</b>${getClaimTagHtml(info.claimed)}<br>${body}${purchaseHint}`;
     }
 
 
@@ -2433,12 +2648,9 @@
       const total = cartState.items.reduce((sum, item) => sum + getCartPrice(item.objectType), 0);
       cartTotal.textContent = formatMoney(total);
       checkoutButton.disabled = cartState.items.length === 0;
-      addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
-      if (cartState.items.length >= CART_ITEM_LIMIT) addToCartButton.title = `Cart limit: ${CART_ITEM_LIMIT} objects`;
-      else addToCartButton.removeAttribute('title');
-
+      updateHudPurchaseAction(state.hudLookupToken);
       if (!cartState.items.length) {
-        cartItems.innerHTML = '<div class="cart-empty">Your cart is empty. Add a valid celestial ID to reserve it for 15 minutes.</div>';
+        cartItems.innerHTML = '<div class="cart-empty">Your cart is empty. Select an unclaimed object in the universe to reserve it for 15 minutes.</div>';
         return;
       }
 
@@ -2468,31 +2680,90 @@
       }
     }
 
+    function closeRenameModal() {
+      renameModal.classList.remove('visible');
+      purchaseSelection.object = null;
+      purchaseSelection.objectID = '';
+      purchaseSelection.objectType = '';
+      purchaseSelection.price = 0;
+      renameDesiredName.value = '';
+      setRenameModalMessage('');
+      renameModalAdd.disabled = false;
+      renameModalAdd.textContent = 'Add to cart';
+    }
+
+    async function openRenameModal(objectType, object) {
+      if (!object || !object.name) return;
+
+      if (cartState.items.length >= CART_ITEM_LIMIT) {
+        setPurchaseMessage('You can only have 10 items in your cart at once.', 'error');
+        if (isMobileLayout()) setPurchasePanelMinimized(false);
+        return;
+      }
+
+      if (cartState.items.some(item => item.objectID === object.name)) {
+        setPurchaseMessage('That object is already in your cart.', 'error');
+        if (isMobileLayout()) setPurchasePanelMinimized(false);
+        return;
+      }
+
+      const info = await getClaimedInfo(objectType, object.name);
+      if (info.claimed) {
+        setPurchaseMessage('That object has already been claimed.', 'error');
+        return;
+      }
+
+      purchaseSelection.object = object;
+      purchaseSelection.objectID = object.name;
+      purchaseSelection.objectType = objectType;
+      purchaseSelection.price = getCartPrice(objectType);
+
+      const typeLabel = objectType === 'galaxy'
+        ? 'Galaxy'
+        : objectType === 'system'
+          ? 'System + Star'
+          : 'Planet';
+
+      renameModalTitle.textContent = `Rename this ${objectType}`;
+      renameObjectSummary.innerHTML = `
+        <strong>${escapeHtml(object.name)}</strong><br>
+        ${escapeHtml(typeLabel)} · ${formatMoney(purchaseSelection.price)}
+      `;
+      renameDesiredName.value = '';
+      setRenameModalMessage('');
+      renameModalAdd.disabled = false;
+      renameModalAdd.textContent = 'Add to cart';
+      renameModal.classList.add('visible');
+      window.setTimeout(() => renameDesiredName.focus(), 0);
+    }
+
     async function addToCart() {
+      if (!purchaseSelection.objectID || !purchaseSelection.objectType) return;
+
       if (isFrontendCooldownActive('addToCart')) {
         showAddToCartCooldownFeedback();
         return;
       }
 
-      const objectID = purchaseObjectId.value.trim();
-      const desiredName = purchaseDesiredName.value.trim();
+      const objectID = purchaseSelection.objectID;
+      const desiredName = renameDesiredName.value.trim();
 
       if (cartState.items.length >= CART_ITEM_LIMIT) {
-        setPurchaseMessage('You can only have 10 items in your cart at once.', 'error');
+        setRenameModalMessage('You can only have 10 items in your cart at once.', 'error');
         return;
       }
 
       if (desiredName.length < MIN_NAME_LENGTH || desiredName.length > MAX_NAME_LENGTH) {
-        setPurchaseMessage(`Enter a name between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`, 'error');
+        setRenameModalMessage(`Enter a name between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters.`, 'error');
         return;
       }
 
       startFrontendCooldown('addToCart');
       clearCooldownFeedback('addToCart');
 
-      addToCartButton.disabled = true;
-      addToCartButton.textContent = 'Adding…';
-      setPurchaseMessage('Checking availability…');
+      renameModalAdd.disabled = true;
+      renameModalAdd.textContent = 'Adding…';
+      setRenameModalMessage('Checking availability…');
 
       try {
         const payload = await reserveObjectRequest('POST', { objectID, desiredName });
@@ -2504,13 +2775,16 @@
         } else {
           await loadCart();
         }
+
         setPurchaseMessage('Reserved for 15 minutes.', 'success');
+        closeRenameModal();
+        if (isMobileLayout()) setPurchasePanelMinimized(false);
       } catch (error) {
-        setPurchaseMessage(error.message, 'error');
+        setRenameModalMessage(error.message, 'error');
       } finally {
-        addToCartButton.textContent = 'Add to cart';
-        addToCartButton.classList.remove('cooldown');
-        addToCartButton.disabled = cartState.items.length >= CART_ITEM_LIMIT;
+        renameModalAdd.textContent = 'Add to cart';
+        renameModalAdd.classList.remove('cooldown');
+        renameModalAdd.disabled = cartState.items.length >= CART_ITEM_LIMIT;
       }
     }
 
@@ -2686,6 +2960,12 @@
       setPurchasePanelMinimized(!purchasePanel.classList.contains('minimized'));
     }
 
+    async function openCurrentObjectRenameModal() {
+      const current = getCurrentPurchasableObject();
+      if (!current) return;
+      await openRenameModal(current.kind, current.object);
+    }
+
 
     const contextMenuState = {
       target: null,
@@ -2819,10 +3099,39 @@
       }
     }
 
-    function enterObject(target) {
-      if (!target || target.isStar) return;
-      if (state.view === 'galaxies') setView('systems', target);
-      else if (state.view === 'systems') setView('planets', target);
+    function showStarInfo(system) {
+      const systemName = getSystemDisplayNameForStar(system, system.name);
+      const exampleStarName = getStarNameFromBase(system, 'My System');
+      starInfoModalBody.innerHTML = `
+        The star is not purchased separately. Renaming
+        <strong>${escapeHtml(systemName)}</strong> also renames its associated star.
+        For example, naming the system <strong>My System</strong> would name the star
+        <strong>${escapeHtml(exampleStarName)}</strong>.
+      `;
+      starInfoModal.classList.add('visible');
+    }
+
+    async function enterObject(target) {
+      if (!target) return;
+
+      if (target.isStar) {
+        showStarInfo(target.system);
+        return;
+      }
+
+      if (state.view === 'galaxies') {
+        setView('systems', target);
+        return;
+      }
+
+      if (state.view === 'systems') {
+        setView('planets', target);
+        return;
+      }
+
+      if (state.view === 'planets') {
+        await openRenameModal('planet', target);
+      }
     }
 
     function zoomAt(clientX, clientY, factor) {
@@ -2990,15 +3299,31 @@
     });
     searchType.addEventListener('change', runSearch);
     randomUnclaimedButton.addEventListener('click', goToRandomUnclaimed);
-    addToCartButton.addEventListener('click', addToCart);
-    purchaseObjectId.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
-    purchaseDesiredName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addToCart(); });
+    hudAddToCart.addEventListener('click', openCurrentObjectRenameModal);
+    mobileCurrentPurchase.addEventListener('click', openCurrentObjectRenameModal);
+    renameModalAdd.addEventListener('click', addToCart);
+    renameModalCancel.addEventListener('click', closeRenameModal);
+    renameDesiredName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addToCart();
+    });
+    renameModal.addEventListener('click', (e) => {
+      if (e.target === renameModal) closeRenameModal();
+    });
+    starInfoModalClose.addEventListener('click', () => starInfoModal.classList.remove('visible'));
+    starInfoModal.addEventListener('click', (e) => {
+      if (e.target === starInfoModal) starInfoModal.classList.remove('visible');
+    });
     checkoutButton.addEventListener('click', openCheckoutConfirmModal);
     checkoutModalCancel.addEventListener('click', closeCheckoutModal);
     checkoutModalClose.addEventListener('click', closeCheckoutModal);
     checkoutModalProceed.addEventListener('click', startCheckout);
     checkoutModal.addEventListener('click', (e) => { if (e.target === checkoutModal) closeCheckoutModal(); });
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCheckoutModal(); });
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      closeCheckoutModal();
+      closeRenameModal();
+      starInfoModal.classList.remove('visible');
+    });
     purchaseMinimize.addEventListener('click', (e) => {
       e.stopPropagation();
       togglePurchasePanel();
