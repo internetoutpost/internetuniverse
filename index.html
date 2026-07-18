@@ -425,6 +425,16 @@
       gap: 9px;
     }
 
+    .purchase-header .cart-total {
+      margin-left: auto;
+    }
+
+    .prices-title {
+      margin: 4px 0 0;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+    }
+
     .purchase-minimize {
       position: relative;
       min-width: 28px;
@@ -955,25 +965,25 @@
   </section>
 
 
-  <section class="purchase-panel" aria-label="Purchase celestial object">
+  <section class="purchase-panel" aria-label="Cart and purchase information">
     <div class="purchase-header">
-      <button id="purchaseMinimize" class="purchase-minimize" type="button" aria-label="Minimise purchase panel" title="Minimise" data-tooltip="Minimise">−</button>
-      <h2>Rename a celestial object</h2>
+      <button id="purchaseMinimize" class="purchase-minimize" type="button" aria-label="Minimise cart panel" title="Minimise" data-tooltip="Minimise">−</button>
+      <h2>Cart</h2>
+      <div id="cartTotal" class="cart-total">$0</div>
     </div>
     <div class="purchase-collapsible">
-      <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
+      <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
+      <div id="cartItems" class="cart-items" aria-live="polite"></div>
+      <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
+
+      <h3 class="prices-title">Prices</h3>
       <div class="price-list" aria-label="Price list">
         <span>Galaxy</span><span>$100</span>
         <span>System + Star</span><span>$10</span>
         <span>Planet</span><span>$2</span>
       </div>
-      <div id="purchaseMessage" class="purchase-message" aria-live="polite"></div>
-      <div class="cart-title-row">
-        <h3>Cart</h3>
-        <div id="cartTotal" class="cart-total">$0</div>
-      </div>
-      <div id="cartItems" class="cart-items" aria-live="polite"></div>
-      <button id="checkoutButton" class="checkout-button" disabled>Checkout</button>
+      <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
+
       <div class="cart-empty purchase-support">Having issues? Email <a href="mailto:internetoutpost@proton.me">internetoutpost@proton.me</a>.</div>
     </div>
   </section>
@@ -2084,7 +2094,19 @@
       return `${nearest.type} Planet<br><span style="color:#94a9d6">${nearest.moons} moons · orbit ${Math.round(nearest.orbit)} AU local units</span>`;
     }
 
+    function isCanvasTopmostAt(clientX, clientY) {
+      const topElement = document.elementFromPoint(clientX, clientY);
+      return topElement === canvas;
+    }
+
     async function updateHover(clientX, clientY) {
+      if (!isCanvasTopmostAt(clientX, clientY)) {
+        state.hover = null;
+        state.hoverLookupToken += 1;
+        tooltip.classList.remove('visible');
+        return;
+      }
+
       const nearest = hitTest(clientX, clientY);
       const previousHover = state.hover;
       state.hover = nearest;
@@ -3142,6 +3164,11 @@
     }
 
     canvas.addEventListener('contextmenu', (e) => {
+      if (!isCanvasTopmostAt(e.clientX, e.clientY)) {
+        hideObjectContextMenu();
+        return;
+      }
+
       const target = hitTest(e.clientX, e.clientY);
 
       if (!target) {
@@ -3167,6 +3194,25 @@
     window.addEventListener('mouseup', () => {
       state.dragging = false;
       canvas.classList.remove('dragging');
+    });
+
+    [
+      hud,
+      searchPanel,
+      purchasePanel,
+      navPanel,
+      controlsPanel,
+      mobileCurrentPurchase,
+      renameModal,
+      starInfoModal,
+      checkoutModal,
+      objectContextMenu
+    ].filter(Boolean).forEach((element) => {
+      element.addEventListener('mouseenter', () => {
+        state.hover = null;
+        state.hoverLookupToken += 1;
+        tooltip.classList.remove('visible');
+      });
     });
 
     window.addEventListener('mousemove', (e) => {
