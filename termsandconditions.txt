@@ -181,16 +181,9 @@ We use Stripe for identity document verification. Stripe retains a copy of all t
 
 15. Contact
 
-Legal correspondence may be sent to:
-
-Jess Silver
-8 Disney St, London SE1 1JF
-
-General enquiries, support requests and technical issues should be directed to:
+Legal correspondence, general enquiries, support requests and technical issues should be directed to:
 
 internetoutpost@proton.me
-
-Please use the email address for all routine correspondence. The postal address is provided solely to fulfil legal requirements.
 
 16. Governing Law
 
