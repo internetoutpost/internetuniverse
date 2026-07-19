@@ -797,6 +797,125 @@
     .rename-modal-message.error { color: #ff9aa8; }
     .rename-modal-message.success { color: var(--accent); }
 
+    .welcome-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(1, 3, 10, 0.72);
+      backdrop-filter: blur(12px);
+    }
+
+    .welcome-modal-backdrop.visible {
+      display: flex;
+    }
+
+    .welcome-modal-card {
+      position: relative;
+      width: min(640px, calc(100vw - 36px));
+      max-height: calc(100dvh - 36px);
+      overflow: auto;
+      padding: 26px 24px 22px;
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      background: rgba(9, 14, 30, 0.96);
+      color: var(--text);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.62);
+    }
+
+    .welcome-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      min-width: 34px;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 11px;
+      font-size: 20px;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .welcome-title {
+      margin: 2px 42px 8px;
+      text-align: center;
+      font-size: 28px;
+      letter-spacing: 0.01em;
+    }
+
+    .welcome-brand {
+      margin: 0 0 24px;
+      text-align: center;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.42em;
+      line-height: 1.5;
+      text-indent: 0.42em;
+    }
+
+    .welcome-modal-card p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .welcome-preference {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin: 22px 0 14px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .welcome-preference input {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .welcome-explore {
+      display: block;
+      width: min(240px, 100%);
+      height: 44px;
+      margin: 0 auto;
+      font-size: 14px;
+      font-weight: 900;
+      border-color: rgba(134, 247, 255, 0.72);
+      box-shadow: 0 0 18px rgba(134, 247, 255, 0.2);
+    }
+
+    @media (max-width: 520px) {
+      .welcome-modal-card {
+        padding: 24px 18px 20px;
+      }
+
+      .welcome-title {
+        font-size: 24px;
+      }
+
+      .welcome-brand {
+        font-size: 11px;
+        letter-spacing: 0.28em;
+        text-indent: 0.28em;
+      }
+
+      .welcome-modal-card p {
+        font-size: 13px;
+      }
+    }
+
     mark {
       color: #ffffff;
       background: rgba(134, 247, 255, 0.22);
@@ -906,6 +1025,54 @@
   </style>
 </head>
 <body>
+  <div
+    id="welcomeModal"
+    class="welcome-modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="welcomeModalTitle"
+    aria-describedby="welcomeModalDescription"
+  >
+    <div class="welcome-modal-card">
+      <button
+        id="welcomeModalClose"
+        class="welcome-close"
+        type="button"
+        aria-label="Close welcome window"
+        title="Close"
+      >×</button>
+
+      <h1 id="welcomeModalTitle" class="welcome-title">Welcome</h1>
+      <div class="welcome-brand">INTERNET UNIVERSE</div>
+
+      <div id="welcomeModalDescription">
+        <p>
+          This is a virtual universe of celestial objects — 1,000 galaxies,
+          100,218 solar systems, 500,485 planets, and over a dozen different
+          types of star.
+        </p>
+
+        <p>
+          Celestial objects start with a procedurally generated name, such as
+          “Tir Galaxy G-06” or “Aster World G1H-S1A-P01”. For a small price,
+          you can leave your mark upon the internet by claiming and renaming
+          a celestial object.
+        </p>
+
+        <p id="welcomePlatformInstructions"></p>
+      </div>
+
+      <label class="welcome-preference">
+        <input id="welcomeDoNotShowAgain" type="checkbox" />
+        <span>Do not show again</span>
+      </label>
+
+      <button id="welcomeExploreButton" class="welcome-explore" type="button">
+        Explore
+      </button>
+    </div>
+  </div>
+
   <canvas id="universe"></canvas>
 
   <section class="hud">
@@ -1072,6 +1239,11 @@
   <script>
     const canvas = document.getElementById('universe');
     const ctx = canvas.getContext('2d');
+    const welcomeModal = document.getElementById('welcomeModal');
+    const welcomeModalClose = document.getElementById('welcomeModalClose');
+    const welcomeExploreButton = document.getElementById('welcomeExploreButton');
+    const welcomeDoNotShowAgain = document.getElementById('welcomeDoNotShowAgain');
+    const welcomePlatformInstructions = document.getElementById('welcomePlatformInstructions');
     const tooltip = document.getElementById('tooltip');
     const objectContextMenu = document.getElementById('objectContextMenu');
     const objectContextMenuAction = document.getElementById('objectContextMenuAction');
@@ -1135,6 +1307,48 @@
 
     function isMobileLayout() {
       return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    const WELCOME_DISMISSED_STORAGE_KEY = 'internet_universe_hide_welcome';
+
+    function setWelcomePlatformInstructions() {
+      welcomePlatformInstructions.textContent = isMobileLayout()
+        ? 'You can navigate around the universe by dragging your finger and using the controls at the top. Long pressing on an object allows you to see information about it. Tapping on a galaxy or solar system allows you to look around inside it.'
+        : 'You can navigate around the universe using the mouse or trackpad and the controls on the top left. Hovering over an object allows you to see information about it. Clicking on a galaxy or solar system allows you to look around inside it.';
+    }
+
+    function shouldShowWelcomeModal() {
+      try {
+        return localStorage.getItem(WELCOME_DISMISSED_STORAGE_KEY) !== 'true';
+      } catch {
+        return true;
+      }
+    }
+
+    function closeWelcomeModal() {
+      if (welcomeDoNotShowAgain.checked) {
+        try {
+          localStorage.setItem(WELCOME_DISMISSED_STORAGE_KEY, 'true');
+        } catch (error) {
+          console.warn('Could not save welcome preference:', error);
+        }
+      }
+
+      welcomeModal.classList.remove('visible');
+      welcomeModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function openWelcomeModal() {
+      if (!shouldShowWelcomeModal()) return;
+
+      welcomeDoNotShowAgain.checked = false;
+      setWelcomePlatformInstructions();
+      welcomeModal.classList.add('visible');
+      welcomeModal.setAttribute('aria-hidden', 'false');
+
+      window.setTimeout(() => {
+        welcomeModalClose.focus();
+      }, 0);
     }
 
     const FRONTEND_COOLDOWNS = {
@@ -3336,6 +3550,9 @@
     document.getElementById('reset').addEventListener('click', resetView);
 
 
+    welcomeExploreButton.addEventListener('click', closeWelcomeModal);
+    welcomeModalClose.addEventListener('click', closeWelcomeModal);
+
     searchButton.addEventListener('click', runSearch);
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') runSearch();
@@ -3366,6 +3583,7 @@
     checkoutModal.addEventListener('click', (e) => { if (e.target === checkoutModal) closeCheckoutModal(); });
     window.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      closeWelcomeModal();
       closeCheckoutModal();
       closeRenameModal();
       starInfoModal.classList.remove('visible');
@@ -3381,12 +3599,18 @@
     });
     setInterval(renderCart, 1000);
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', () => {
+      resize();
+      if (welcomeModal.classList.contains('visible')) {
+        setWelcomePlatformInstructions();
+      }
+    });
     handleCheckoutReturnMessage();
     loadCart();
     resize();
     updateHud();
     draw();
+    openWelcomeModal();
   </script>
 </body>
 </html>
