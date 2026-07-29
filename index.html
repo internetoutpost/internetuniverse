@@ -1296,6 +1296,35 @@
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uHqrOR1i6kwr0xVOX6x2Eg_yigH56Bb';
     const RESERVE_OBJECT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/reserve-object`;
     const CREATE_CHECKOUT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-checkout`;
+    const CART_SESSION_STORAGE_KEY = 'internet_universe_cart_session_id';
+
+    function readStoredCartSessionID() {
+      try {
+        const value = localStorage.getItem(CART_SESSION_STORAGE_KEY);
+        return value && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+          ? value.toLowerCase()
+          : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function storeCartSessionID(value) {
+      if (!value || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+        return;
+      }
+
+      cartSessionID = value.toLowerCase();
+
+      try {
+        localStorage.setItem(CART_SESSION_STORAGE_KEY, cartSessionID);
+      } catch (error) {
+        console.warn('Could not store cart session ID:', error);
+      }
+    }
+
+    let cartSessionID = readStoredCartSessionID();
+
     const cartState = { items: [], loading: false };
     const purchaseSelection = { object: null, objectID: '', objectType: '', price: 0 };
     const CART_ITEM_LIMIT = 10;
@@ -2845,22 +2874,35 @@
     }
 
     async function reserveObjectRequest(method, body) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'apikey': SUPABASE_PUBLISHABLE_KEY
+      };
+
+      if (cartSessionID) {
+        headers['x-cart-session-id'] = cartSessionID;
+      }
+
       const options = {
         method,
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': SUPABASE_PUBLISHABLE_KEY
-        }
+        headers
       };
+
       if (body) options.body = JSON.stringify(body);
 
       const response = await fetch(RESERVE_OBJECT_FUNCTION_URL, options);
       const payload = await response.json().catch(() => ({}));
+
+      if (payload.cartSessionID) {
+        storeCartSessionID(payload.cartSessionID);
+      }
+
       if (!response.ok) {
         throw new Error(payload.error || 'Could not update cart. Please try again.');
       }
+
       return payload;
     }
 
@@ -3106,7 +3148,8 @@
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            ...(cartSessionID ? { 'x-cart-session-id': cartSessionID } : {})
           }
         });
 
