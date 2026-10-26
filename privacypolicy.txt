@@ -1,0 +1,187 @@
+# Privacy Policy
+
+**Last updated: 26 October 2026**
+
+This Privacy Policy explains how Internet Outpost (“we”, “us” or “our”), a UK-based sole trader operating Internet Universe, handles personal information when you visit and use Internet Universe.
+
+We aim to collect and retain as little personal information as reasonably possible.
+
+## 1. Who we are
+
+Internet Universe is operated by **Internet Outpost**, the trading name used by a sole trader based in the United Kingdom.
+
+For questions about this Privacy Policy or the way your personal information is handled, please contact:
+
+**Email:** internetoutpost@proton.me
+
+## 2. Information processed when you visit Internet Universe
+
+### IP address and regional currency
+
+When you visit Internet Universe, your public IP address is processed automatically in order to determine your approximate country.
+
+We use this information to select an appropriate currency for prices displayed on the website. For example, visitors may be shown prices in pounds sterling (GBP), euros (EUR) or US dollars (USD).
+
+The IP address received when you access the site may be passed through our backend infrastructure and submitted to **IPinfo** for a country-level geolocation lookup.
+
+Internet Outpost does not intentionally store your IP address in its reservations or claimed-object database as part of this process. We use the result of the lookup to determine your country and corresponding display currency.
+
+IPinfo operates its own infrastructure and may process information in accordance with its own privacy practices and policies.
+
+Our lawful basis for this processing is **legitimate interests**. Our legitimate interest is providing visitors with prices in a currency appropriate to their approximate region and operating the website in a practical and user-friendly manner. The processing is limited to what is needed for this purpose and is not used by us for advertising, profiling or tracking visitors across websites.
+
+You have the right to object to processing based on legitimate interests. See section 9 below.
+
+## 3. Purchases and payments
+
+If you choose to purchase the right to rename a celestial object within Internet Universe, payment is processed using **Stripe**.
+
+Stripe may ask you for information necessary to process the transaction, which may include your name, email address, billing information, payment card details and other payment-related information.
+
+Payment card details are processed by Stripe. Internet Outpost does not intentionally collect or store your full payment card details in its own database.
+
+Stripe processes personal information in accordance with its own privacy practices and may process some information both on our behalf and for its own purposes.
+
+Our lawful basis for processing information necessary to provide a purchase is **performance of a contract**, or taking steps at your request before entering into a contract.
+
+Where information must be retained to comply with legal, tax, accounting, fraud-prevention or regulatory obligations, the applicable lawful basis may instead be **legal obligation** or **legitimate interests**, depending on the circumstances.
+
+## 4. Reservations and claimed celestial objects
+
+When you add an object to your cart, Internet Universe creates a temporary reservation containing information needed to manage the cart and checkout process. This may include:
+
+- the procedural identifier of the celestial object;
+- the name you would like to give the object;
+- the type of object;
+- the selected currency;
+- a temporary cart/session identifier;
+- reservation and expiry information; and
+- information required to associate a reservation with a Stripe checkout session.
+
+Temporary reservation information is not intended to be retained long-term. Uncompleted reservations expire and may subsequently be deleted.
+
+If a purchase is successfully completed, the information required for Internet Universe to remember the claimed celestial object and its chosen name may be retained for as long as the claim remains part of Internet Universe.
+
+This is necessary because the purpose of the service is to maintain the renamed object within the virtual universe.
+
+## 5. Browser storage
+
+Internet Universe uses limited browser storage for functional purposes.
+
+This includes storage used to:
+
+- maintain your cart session between requests; and
+- remember if you select “Do not show again” on the welcome screen.
+
+This storage is used to provide functionality and remember your choices. We do not use it for behavioural advertising, cross-site tracking or marketing.
+
+Internet Universe does not currently use advertising cookies or third-party analytics services such as Google Analytics or Meta Pixel.
+
+You can remove locally stored information using your browser's controls, although doing so may reset preferences or interrupt an active cart session.
+
+## 6. Service providers
+
+Internet Universe relies on third-party service providers to operate the website.
+
+These currently include:
+
+**GitHub** — used to host and deliver the website.
+
+**Supabase** — used for backend functions and database infrastructure. The primary Supabase project used by Internet Universe is hosted in the United States.
+
+**IPinfo** — used to determine an approximate country from a visitor's public IP address for regional currency selection.
+
+**Stripe** — used to provide secure payment and checkout services.
+
+These providers may process technical or personal information as necessary to provide their services and may have their own obligations and privacy practices.
+
+We do not sell your personal information.
+
+## 7. International data transfers
+
+Internet Outpost is based in the United Kingdom, but some of the services used to operate Internet Universe process or store information outside the United Kingdom.
+
+In particular, the Supabase project used by Internet Universe is hosted in the United States. Other service providers may also process information internationally as part of their infrastructure.
+
+Where UK data protection law requires safeguards for an international transfer of personal information, we rely on the safeguards and transfer mechanisms provided by the relevant service provider and required by applicable law.
+
+Information about the international processing arrangements of individual service providers can be found in their respective privacy and data-protection documentation.
+
+## 8. How long we keep information
+
+We aim to retain personal information only for as long as it is required for the purpose for which it was processed.
+
+IP addresses used for country and currency detection are not intentionally stored by Internet Outpost as part of the currency-detection process.
+
+Temporary cart and reservation information is retained only for the period required to manage reservations and checkout and is intended to expire if a purchase is not completed.
+
+Information necessary to maintain a successfully claimed celestial object, including its object identifier and chosen name, may be retained for as long as the claim remains part of Internet Universe.
+
+Information that must be retained for legal, accounting, tax, fraud-prevention or regulatory reasons may be kept for the period required by applicable law.
+
+Third-party providers may apply their own retention periods to information they process.
+
+## 9. Your data protection rights
+
+Depending on the circumstances, UK data protection law may give you rights relating to your personal information, including the right to:
+
+- ask for access to personal information held about you;
+- ask for inaccurate personal information to be corrected;
+- ask for personal information to be deleted in certain circumstances;
+- ask for processing to be restricted in certain circumstances;
+- object to certain processing of your personal information; and
+- receive certain personal information in a portable format where the legal requirements for that right are met.
+
+**You have the right to object to processing based on legitimate interests, including our use of your IP address for country and currency detection.**
+
+These rights are not absolute and whether a particular right applies depends on the circumstances and the lawful basis for the processing.
+
+To make a privacy or data-protection request, contact:
+
+**internetoutpost@proton.me**
+
+We may need enough information to identify the relevant records and verify that a request relates to you. Because Internet Outpost deliberately retains very little identifying information, there may be situations where we cannot associate information with a particular visitor.
+
+## 10. Marketing and advertising
+
+Internet Outpost does not currently use information collected through Internet Universe to send marketing emails or newsletters.
+
+We do not currently use behavioural advertising or third-party advertising trackers on Internet Universe.
+
+If this changes in the future, this Privacy Policy will be updated and any consent or other measures required by applicable law will be implemented.
+
+## 11. Automated decision-making and profiling
+
+Internet Universe automatically uses the country associated with a visitor's IP address to choose a display currency.
+
+This is not used by Internet Outpost to make decisions about individuals that have legal or similarly significant effects, and it is not used to build advertising or behavioural profiles.
+
+## 12. Security
+
+We use reasonable technical and organisational measures designed to protect the information processed through Internet Universe.
+
+Payment information is handled through Stripe rather than being directly stored by Internet Outpost.
+
+No internet service can guarantee absolute security, but we aim to minimise the amount of personal information we collect and retain.
+
+## 13. Complaints
+
+If you have a concern about how Internet Outpost handles your personal information, please contact us first at:
+
+**internetoutpost@proton.me**
+
+If you are unhappy with our response, you also have the right to make a complaint to the **Information Commissioner's Office (ICO)**, the UK's data protection supervisory authority.
+
+Information about making a complaint is available through the ICO's website.
+
+## 14. Third-party privacy policies
+
+The third-party services used by Internet Universe operate under their own terms and privacy policies. You may wish to review the privacy information provided by Stripe, Supabase, IPinfo and GitHub for more information about how those organisations process information.
+
+## 15. Changes to this Privacy Policy
+
+We may update this Privacy Policy when Internet Universe changes, when our service providers change, or when legal or regulatory requirements change.
+
+The date at the top of this policy indicates when it was last updated.
+
+If we make a material change to the way personal information is used, we will update this notice and, where appropriate, provide additional notice on Internet Universe.
