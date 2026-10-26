@@ -1352,30 +1352,52 @@
 
     let selectedCurrency = 'USD';
     let detectedCountry = null;
+    let currencyDetectionSource = 'pending';
 
     async function detectDefaultCurrency() {
       try {
-        const response = await fetch(DETECT_COUNTRY_FUNCTION_URL, {
+        // detect-country has Verify JWT disabled, so do not send the
+        // Supabase publishable key as a Bearer token. The apikey header is
+        // sufficient for the project gateway.
+        const response = await fetch(`${DETECT_COUNTRY_FUNCTION_URL}?t=${Date.now()}`, {
           method: 'GET',
           headers: {
             apikey: SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            Accept: 'application/json'
           },
-          cache: 'no-store'
+          cache: 'no-store',
+          credentials: 'omit'
         });
 
         if (!response.ok) {
-          throw new Error(`Country detection returned ${response.status}`);
+          const body = await response.text().catch(() => '');
+          throw new Error(`Country detection returned ${response.status}${body ? `: ${body}` : ''}`);
         }
 
         const data = await response.json();
-        const nextCurrency = String(data?.currency || '').toUpperCase();
+        const nextCurrency = String(data?.currency || '').trim().toUpperCase();
+        const nextCountry = typeof data?.country === 'string'
+          ? data.country.trim().toUpperCase()
+          : null;
 
-        selectedCurrency = currencyConfig[nextCurrency] ? nextCurrency : 'USD';
-        detectedCountry = typeof data?.country === 'string' ? data.country.toUpperCase() : null;
+        if (!currencyConfig[nextCurrency]) {
+          throw new Error(`Country detection returned unsupported currency: ${nextCurrency || 'empty'}`);
+        }
+
+        selectedCurrency = nextCurrency;
+        detectedCountry = nextCountry && /^[A-Z]{2}$/.test(nextCountry) ? nextCountry : null;
+        currencyDetectionSource = String(data?.source || 'unknown');
+
+        console.info('Currency detection:', {
+          country: detectedCountry,
+          currency: selectedCurrency,
+          source: currencyDetectionSource,
+          hasClientIp: Boolean(data?.hasClientIp)
+        });
       } catch (error) {
         selectedCurrency = 'USD';
         detectedCountry = null;
+        currencyDetectionSource = 'error';
         console.warn('Could not detect visitor country; defaulting to USD.', error);
       }
 
