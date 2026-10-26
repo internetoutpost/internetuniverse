@@ -886,6 +886,28 @@
       cursor: pointer;
     }
 
+    .legal-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .legal-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .legal-links a:hover { text-decoration: underline; }
+
+    .welcome-legal-links { margin-top: 14px; }
+
     .welcome-explore {
       display: block;
       width: min(240px, 100%);
@@ -1071,6 +1093,11 @@
       <button id="welcomeExploreButton" class="welcome-explore" type="button">
         Explore
       </button>
+      <div class="legal-links welcome-legal-links" aria-label="Legal information">
+        <a href="termsandconditions.txt" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+        <span aria-hidden="true">·</span>
+        <a href="privacypolicy.txt" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+      </div>
     </div>
   </div>
 
@@ -1154,6 +1181,12 @@
         <span>Planet</span><span id="planetPrice"></span>
       </div>
       <p class="purchase-description">Leave your mark on the internet by renaming a galaxy / system / planet in the observable cluster.</p>
+
+      <div class="legal-links" aria-label="Legal information">
+        <a href="termsandconditions.txt" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+        <span aria-hidden="true">·</span>
+        <a href="privacypolicy.txt" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+      </div>
 
       <div class="cart-empty purchase-support">Having issues? Email <a href="mailto:internetoutpost@proton.me">internetoutpost@proton.me</a>.</div>
     </div>
